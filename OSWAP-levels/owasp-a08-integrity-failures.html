@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A08:2025 - Software/Data Integrity Failures Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #8bc34a; text-shadow: 0 0 20px rgba(139, 195, 74, 0.5); }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
+        .rank-badge { background: #8bc34a; color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel h2 { color: #8bc34a; margin-bottom: 20px; border-bottom: 2px solid #8bc34a; padding-bottom: 10px; }
+
+        .update-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .flow-node {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            min-width: 100px;
+            transition: all 0.3s;
+        }
+        .flow-node .icon { font-size: 2em; margin-bottom: 5px; }
+        .flow-node.compromised { border: 2px solid #ff4444; background: rgba(255, 68, 68, 0.2); animation: pulse 1s infinite; }
+        .flow-node.verified { border: 2px solid #4ecdc4; }
+        .flow-arrow { font-size: 1.5em; color: #4ecdc4; }
+        .flow-arrow.malicious { color: #ff4444; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 10px rgba(255, 68, 68, 0.5); } 50% { box-shadow: 0 0 25px rgba(255, 68, 68, 0.8); } }
+
+        .hash-display {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+        }
+        .hash-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+        .hash-row:last-child { border-bottom: none; }
+        .hash-label { color: #8bc34a; }
+        .hash-value { color: #888; font-size: 0.85em; word-break: break-all; }
+        .hash-value.mismatch { color: #ff4444; }
+        .hash-value.match { color: #4ecdc4; }
+
+        .file-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .file-card.tampered { border: 2px solid #ff4444; background: rgba(255, 68, 68, 0.2); }
+        .file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .file-name { font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .file-status { padding: 5px 12px; border-radius: 15px; font-size: 0.8em; }
+        .file-status.safe { background: #4ecdc4; color: #1a1a2e; }
+        .file-status.danger { background: #ff4444; }
+
+        .serialization-demo {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        .serialization-demo pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .serialization-demo .safe { color: #4ecdc4; }
+        .serialization-demo .malicious { color: #ff4444; background: rgba(255, 68, 68, 0.2); }
+
+        .attack-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #8bc34a, #689f38);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .attack-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(139, 195, 74, 0.4); }
+        .attack-btn.danger { background: linear-gradient(135deg, #ff4444, #cc0000); }
+
+        .terminal {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .terminal-line { margin-bottom: 5px; }
+        .terminal-line.command { color: #8bc34a; }
+        .terminal-line.output { color: #888; }
+        .terminal-line.danger { color: #ff4444; }
+        .terminal-line.success { color: #4ecdc4; }
+
+        .info-box {
+            background: rgba(139, 195, 74, 0.1);
+            border: 1px solid #8bc34a;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-box h3 { color: #8bc34a; margin-bottom: 10px; }
+        .info-box p { color: #ccc; line-height: 1.6; }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="rank-badge">#8</span> Software or Data Integrity Failures</h1>
+        <p class="subtitle">A08:2025 - Code, data, or artifacts lacking integrity checks, susceptible to tampering</p>
+
+        <div class="grid">
+            <div class="panel full-width">
+                <h2>Software Update Flow</h2>
+                <div class="update-flow">
+                    <div class="flow-node" id="dev-server">
+                        <div class="icon">💻</div>
+                        <div>Developer</div>
+                        <div style="font-size: 0.8em; color: #888;">Signs code</div>
+                    </div>
+                    <div class="flow-arrow" id="arrow1">➡️</div>
+                    <div class="flow-node" id="build-server">
+                        <div class="icon">🔨</div>
+                        <div>Build Server</div>
+                        <div style="font-size: 0.8em; color: #888;">CI/CD</div>
+                    </div>
+                    <div class="flow-arrow" id="arrow2">➡️</div>
+                    <div class="flow-node" id="cdn-server">
+                        <div class="icon">🌐</div>
+                        <div>CDN</div>
+                        <div style="font-size: 0.8em; color: #888;">Distribution</div>
+                    </div>
+                    <div class="flow-arrow" id="arrow3">➡️</div>
+                    <div class="flow-node" id="client">
+                        <div class="icon">📱</div>
+                        <div>Client</div>
+                        <div style="font-size: 0.8em; color: #ff4444;">No verification!</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 20px; margin-top: 20px;">
+                    <button class="attack-btn danger" onclick="simulateUpdateTampering()">Simulate Update Tampering Attack</button>
+                    <button class="attack-btn" onclick="showSecureFlow()">Show Secure Update Flow</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>File Integrity</h2>
+                <div class="file-card" id="file-app">
+                    <div class="file-header">
+                        <span class="file-name">📄 app-update-v2.3.exe</span>
+                        <span class="file-status safe" id="file-status">Verified</span>
+                    </div>
+                    <div style="font-size: 0.9em; color: #888;">Size: 45.2 MB | Version: 2.3.0</div>
+                </div>
+
+                <h3 style="margin: 20px 0 15px; color: #8bc34a;">Hash Verification</h3>
+                <div class="hash-display">
+                    <div class="hash-row">
+                        <span class="hash-label">Expected SHA-256:</span>
+                        <span class="hash-value" id="expected-hash">a7f3c2d1e5b4...</span>
+                    </div>
+                    <div class="hash-row">
+                        <span class="hash-label">Actual SHA-256:</span>
+                        <span class="hash-value" id="actual-hash">a7f3c2d1e5b4...</span>
+                    </div>
+                    <div class="hash-row">
+                        <span class="hash-label">Digital Signature:</span>
+                        <span class="hash-value" id="signature">Valid (Acme Corp)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Insecure Deserialization</h2>
+                <div class="serialization-demo">
+                    <div style="margin-bottom: 15px; color: #8bc34a;">Normal Session Cookie:</div>
+                    <pre class="safe" id="safe-cookie">{"user":"john","role":"user","exp":1699999999}</pre>
+
+                    <div style="margin: 15px 0; color: #ff4444;">Tampered Session Cookie:</div>
+                    <pre class="malicious" id="malicious-cookie">{"user":"john","role":"admin","exp":9999999999,
+"__proto__":{"isAdmin":true}}</pre>
+                </div>
+                <button class="attack-btn danger" onclick="simulateDeserializationAttack()">Execute Deserialization Attack</button>
+            </div>
+
+            <div class="panel full-width">
+                <h2>Attack Terminal</h2>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line output">Integrity monitoring system ready...</div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Network Relevance</h3>
+                    <p>Tampered updates or data can circulate across networks, propagating compromised behavior or backdoors across services. Without proper integrity verification, malicious code can spread through auto-update mechanisms, affecting all connected systems. Insecure deserialization can lead to remote code execution when processing data from network sources.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addTerminalLine(text, type) {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function simulateUpdateTampering() {
+            addTerminalLine('', 'output');
+            addTerminalLine('[ATTACK] Intercepting software update...', 'command');
+
+            setTimeout(() => {
+                document.getElementById('cdn-server').classList.add('compromised');
+                document.getElementById('arrow2').classList.add('malicious');
+                addTerminalLine('[MITM] Intercepted update from CDN', 'danger');
+                addTerminalLine('[INJECT] Injecting malicious payload into binary...', 'danger');
+
+                setTimeout(() => {
+                    document.getElementById('arrow3').classList.add('malicious');
+                    document.getElementById('client').classList.add('compromised');
+
+                    // Update hash display
+                    document.getElementById('actual-hash').textContent = 'b8e4d3f2a6c5...';
+                    document.getElementById('actual-hash').classList.add('mismatch');
+                    document.getElementById('expected-hash').classList.add('match');
+                    document.getElementById('signature').textContent = 'INVALID!';
+                    document.getElementById('signature').classList.add('mismatch');
+
+                    // Update file card
+                    document.getElementById('file-app').classList.add('tampered');
+                    document.getElementById('file-status').textContent = 'TAMPERED!';
+                    document.getElementById('file-status').classList.remove('safe');
+                    document.getElementById('file-status').classList.add('danger');
+
+                    addTerminalLine('[TAMPERED] Modified binary delivered to client', 'danger');
+                    addTerminalLine('[VULNERABILITY] Client installed without verification!', 'danger');
+                    addTerminalLine('[BACKDOOR] Reverse shell established', 'danger');
+
+                    setTimeout(() => {
+                        alert('⚠️ Update Tampering Attack Successful!\n\n' +
+                              'Attack Flow:\n' +
+                              '1. Intercepted update from CDN\n' +
+                              '2. Injected malicious payload\n' +
+                              '3. Client installed without verifying signature\n\n' +
+                              'Vulnerabilities:\n' +
+                              '• No code signing verification\n' +
+                              '• HTTP instead of HTTPS for updates\n' +
+                              '• No hash verification before install\n\n' +
+                              'Impact: Full system compromise via backdoor');
+                    }, 500);
+                }, 1500);
+            }, 1000);
+        }
+
+        function showSecureFlow() {
+            // Reset compromised states
+            document.querySelectorAll('.flow-node').forEach(n => n.classList.remove('compromised'));
+            document.querySelectorAll('.flow-arrow').forEach(a => a.classList.remove('malicious'));
+
+            // Show secure states
+            document.querySelectorAll('.flow-node').forEach(n => n.classList.add('verified'));
+
+            // Reset hash display
+            document.getElementById('actual-hash').textContent = 'a7f3c2d1e5b4...';
+            document.getElementById('actual-hash').classList.remove('mismatch');
+            document.getElementById('actual-hash').classList.add('match');
+            document.getElementById('signature').textContent = 'Valid (Acme Corp)';
+            document.getElementById('signature').classList.remove('mismatch');
+            document.getElementById('signature').classList.add('match');
+
+            // Reset file card
+            document.getElementById('file-app').classList.remove('tampered');
+            document.getElementById('file-status').textContent = 'Verified';
+            document.getElementById('file-status').classList.remove('danger');
+            document.getElementById('file-status').classList.add('safe');
+
+            addTerminalLine('', 'output');
+            addTerminalLine('[SECURE] Proper update verification flow:', 'success');
+            addTerminalLine('1. Code signed by developer with private key', 'success');
+            addTerminalLine('2. Build server verifies source integrity', 'success');
+            addTerminalLine('3. CDN serves over HTTPS with pinned certificate', 'success');
+            addTerminalLine('4. Client verifies digital signature before install', 'success');
+            addTerminalLine('5. Hash comparison confirms integrity', 'success');
+        }
+
+        function simulateDeserializationAttack() {
+            addTerminalLine('', 'output');
+            addTerminalLine('[ATTACK] Crafting malicious serialized object...', 'command');
+
+            setTimeout(() => {
+                addTerminalLine('[PAYLOAD] Injecting prototype pollution...', 'danger');
+                addTerminalLine('[SEND] Sending tampered cookie to server...', 'output');
+
+                setTimeout(() => {
+                    addTerminalLine('[DESERIALIZE] Server processing untrusted data...', 'danger');
+                    addTerminalLine('[EXPLOIT] Prototype chain modified!', 'danger');
+                    addTerminalLine('[ESCALATE] role: "user" → role: "admin"', 'danger');
+                    addTerminalLine('[RCE] Remote code execution achieved!', 'danger');
+
+                    setTimeout(() => {
+                        alert('⚠️ Deserialization Attack Successful!\n\n' +
+                              'Attack Vector: Tampered session cookie\n\n' +
+                              'Payload:\n' +
+                              '{"role":"admin","__proto__":{"isAdmin":true}}\n\n' +
+                              'Vulnerabilities:\n' +
+                              '• No integrity check on serialized data\n' +
+                              '• Unsafe deserialization (eval/unserialize)\n' +
+                              '• No signature on session cookies\n\n' +
+                              'Impact:\n' +
+                              '• Privilege escalation to admin\n' +
+                              '• Remote code execution\n' +
+                              '• Full server compromise');
+                    }, 500);
+                }, 1000);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

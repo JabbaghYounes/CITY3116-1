@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A02:2025 - Security Misconfiguration Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #f39c12; text-shadow: 0 0 20px rgba(243, 156, 18, 0.5); }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
+        .rank-badge { background: #f39c12; color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel h2 { color: #f39c12; margin-bottom: 20px; border-bottom: 2px solid #f39c12; padding-bottom: 10px; }
+
+        .server-diagram {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .server-icon { font-size: 4em; margin-bottom: 15px; }
+
+        .port-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+        .port {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px 10px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .port .number { font-size: 1.2em; font-weight: bold; color: #4ecdc4; }
+        .port .service { font-size: 0.75em; color: #888; margin-top: 5px; }
+        .port.open { border: 2px solid #ff4444; }
+        .port.open .number { color: #ff4444; }
+        .port.secure { border: 2px solid #4ecdc4; }
+        .port.scanned { animation: scanPulse 0.5s; background: rgba(255, 68, 68, 0.3); }
+        @keyframes scanPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .config-list { list-style: none; }
+        .config-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+        .config-item.vulnerable { border-left: 4px solid #ff4444; }
+        .config-item.secure { border-left: 4px solid #4ecdc4; }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-badge.danger { background: #ff4444; }
+        .status-badge.safe { background: #4ecdc4; color: #1a1a2e; }
+
+        .scan-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .scan-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4); }
+
+        .terminal {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            height: 250px;
+            overflow-y: auto;
+        }
+        .terminal-line { margin-bottom: 5px; }
+        .terminal-line.command { color: #4ecdc4; }
+        .terminal-line.output { color: #888; }
+        .terminal-line.warning { color: #f39c12; }
+        .terminal-line.danger { color: #ff4444; }
+
+        .info-box {
+            background: rgba(243, 156, 18, 0.1);
+            border: 1px solid #f39c12;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-box h3 { color: #f39c12; margin-bottom: 10px; }
+        .info-box p { color: #ccc; line-height: 1.6; }
+
+        .error-page {
+            background: #fff;
+            color: #333;
+            border-radius: 10px;
+            padding: 20px;
+            display: none;
+        }
+        .error-page.visible { display: block; }
+        .error-page h3 { color: #ff4444; margin-bottom: 15px; }
+        .error-page pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 0.8em;
+        }
+        .stack-trace { color: #666; }
+        .sensitive-data { background: #ffeb3b; color: #333; padding: 2px 5px; }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="rank-badge">#2</span> Security Misconfiguration</h1>
+        <p class="subtitle">A02:2025 - Incorrect settings, open services, excessive privileges, and inconsistent controls</p>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Server Configuration</h2>
+                <div class="server-diagram">
+                    <div class="server-icon">🖥️</div>
+                    <h3>Production Web Server</h3>
+                    <p style="color: #888;">webapp.example.com</p>
+                </div>
+
+                <h3 style="margin: 20px 0 15px; color: #f39c12;">Open Ports</h3>
+                <div class="port-grid">
+                    <div class="port open" id="port-22">
+                        <div class="number">22</div>
+                        <div class="service">SSH</div>
+                    </div>
+                    <div class="port open" id="port-80">
+                        <div class="number">80</div>
+                        <div class="service">HTTP</div>
+                    </div>
+                    <div class="port secure" id="port-443">
+                        <div class="number">443</div>
+                        <div class="service">HTTPS</div>
+                    </div>
+                    <div class="port open" id="port-3306">
+                        <div class="number">3306</div>
+                        <div class="service">MySQL</div>
+                    </div>
+                    <div class="port open" id="port-21">
+                        <div class="number">21</div>
+                        <div class="service">FTP</div>
+                    </div>
+                    <div class="port open" id="port-23">
+                        <div class="number">23</div>
+                        <div class="service">Telnet</div>
+                    </div>
+                    <div class="port open" id="port-8080">
+                        <div class="number">8080</div>
+                        <div class="service">Debug</div>
+                    </div>
+                    <div class="port open" id="port-9200">
+                        <div class="number">9200</div>
+                        <div class="service">Elastic</div>
+                    </div>
+                </div>
+
+                <button class="scan-btn" onclick="runPortScan()">Run Port Scan (nmap)</button>
+            </div>
+
+            <div class="panel">
+                <h2>Configuration Issues</h2>
+                <ul class="config-list">
+                    <li class="config-item vulnerable">
+                        <span>Debug Mode</span>
+                        <span class="status-badge danger">ENABLED</span>
+                    </li>
+                    <li class="config-item vulnerable">
+                        <span>Default Credentials</span>
+                        <span class="status-badge danger">admin:admin</span>
+                    </li>
+                    <li class="config-item vulnerable">
+                        <span>Directory Listing</span>
+                        <span class="status-badge danger">ENABLED</span>
+                    </li>
+                    <li class="config-item vulnerable">
+                        <span>Stack Traces</span>
+                        <span class="status-badge danger">EXPOSED</span>
+                    </li>
+                    <li class="config-item secure">
+                        <span>HTTPS</span>
+                        <span class="status-badge safe">ENABLED</span>
+                    </li>
+                    <li class="config-item vulnerable">
+                        <span>Security Headers</span>
+                        <span class="status-badge danger">MISSING</span>
+                    </li>
+                </ul>
+
+                <button class="scan-btn" style="background: linear-gradient(135deg, #e74c3c, #c0392b);" onclick="triggerError()">Trigger Error Page</button>
+            </div>
+
+            <div class="panel">
+                <h2>Reconnaissance Terminal</h2>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line command">$ nmap -sV webapp.example.com</div>
+                    <div class="terminal-line output">Starting Nmap scan...</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Exposed Error Page</h2>
+                <div class="error-page" id="errorPage">
+                    <h3>Application Error</h3>
+                    <p>An unexpected error occurred:</p>
+                    <pre class="stack-trace">
+java.sql.SQLException: Access denied for user
+    at com.mysql.jdbc.ConnectionImpl.<span class="sensitive-data">createNewIO(ConnectionImpl.java:2181)</span>
+    at com.mysql.jdbc.ConnectionImpl.<init>
+
+<span class="sensitive-data">Database: mysql://10.0.0.5:3306/production_db</span>
+<span class="sensitive-data">User: db_admin</span>
+<span class="sensitive-data">Server Path: /var/www/webapp/</span>
+<span class="sensitive-data">Framework: Spring Boot 2.3.1</span>
+                    </pre>
+                </div>
+                <div id="errorPlaceholder" style="text-align: center; color: #666; padding: 50px;">
+                    Click "Trigger Error Page" to see exposed information
+                </div>
+
+                <div class="info-box">
+                    <h3>Network Relevance</h3>
+                    <p>Exposed services and open ports increase the attack surface. Misconfigured TLS or firewall rules enable network reconnaissance and exploitation. Attackers can discover internal network topology, database locations, and vulnerable services.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addTerminalLine(text, type) {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function runPortScan() {
+            const ports = ['port-22', 'port-80', 'port-443', 'port-3306', 'port-21', 'port-23', 'port-8080', 'port-9200'];
+            let delay = 0;
+
+            addTerminalLine('', 'output');
+            addTerminalLine('Scanning ports...', 'output');
+
+            ports.forEach((portId, index) => {
+                setTimeout(() => {
+                    const port = document.getElementById(portId);
+                    port.classList.add('scanned');
+                    setTimeout(() => port.classList.remove('scanned'), 500);
+
+                    const portNum = port.querySelector('.number').textContent;
+                    const service = port.querySelector('.service').textContent;
+                    const isOpen = port.classList.contains('open');
+
+                    if (isOpen) {
+                        addTerminalLine(`PORT ${portNum}/tcp OPEN - ${service}`, 'danger');
+                    } else {
+                        addTerminalLine(`PORT ${portNum}/tcp open - ${service} (secured)`, 'output');
+                    }
+                }, delay);
+                delay += 300;
+            });
+
+            setTimeout(() => {
+                addTerminalLine('', 'output');
+                addTerminalLine('CRITICAL FINDINGS:', 'warning');
+                addTerminalLine('- MySQL (3306) exposed to internet!', 'danger');
+                addTerminalLine('- Telnet (23) - insecure protocol!', 'danger');
+                addTerminalLine('- Debug port (8080) accessible!', 'danger');
+                addTerminalLine('- Elasticsearch (9200) no auth!', 'danger');
+                addTerminalLine('', 'output');
+                addTerminalLine('Recommendation: Implement firewall rules', 'warning');
+
+                alert('⚠️ Port Scan Complete!\n\n' +
+                      'Critical vulnerabilities found:\n\n' +
+                      '• MySQL database exposed to internet\n' +
+                      '• Telnet using unencrypted protocol\n' +
+                      '• Debug server publicly accessible\n' +
+                      '• Elasticsearch has no authentication\n\n' +
+                      'These misconfigurations allow attackers to:\n' +
+                      '- Map internal network topology\n' +
+                      '- Access sensitive databases directly\n' +
+                      '- Exploit debug endpoints');
+            }, delay + 500);
+        }
+
+        function triggerError() {
+            document.getElementById('errorPage').classList.add('visible');
+            document.getElementById('errorPlaceholder').style.display = 'none';
+
+            addTerminalLine('', 'output');
+            addTerminalLine('$ curl webapp.example.com/api/test', 'command');
+            addTerminalLine('HTTP 500 - Internal Server Error', 'danger');
+            addTerminalLine('Sensitive data exposed in response!', 'warning');
+
+            setTimeout(() => {
+                alert('⚠️ Information Disclosure!\n\n' +
+                      'The error page reveals:\n\n' +
+                      '• Internal database IP: 10.0.0.5\n' +
+                      '• Database name: production_db\n' +
+                      '• DB username: db_admin\n' +
+                      '• Server path: /var/www/webapp/\n' +
+                      '• Framework version: Spring Boot 2.3.1\n\n' +
+                      'This information helps attackers:\n' +
+                      '- Target specific vulnerabilities\n' +
+                      '- Plan lateral movement\n' +
+                      '- Craft targeted exploits');
+            }, 500);
+        }
+    </script>
+</body>
+</html>

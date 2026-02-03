@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A03:2025 - Software Supply Chain Failures Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #9b59b6; text-shadow: 0 0 20px rgba(155, 89, 182, 0.5); }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
+        .rank-badge { background: #9b59b6; color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel h2 { color: #9b59b6; margin-bottom: 20px; border-bottom: 2px solid #9b59b6; padding-bottom: 10px; }
+
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+        .pipeline-stage {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            min-width: 100px;
+            transition: all 0.3s;
+        }
+        .pipeline-stage .icon { font-size: 2em; margin-bottom: 10px; }
+        .pipeline-stage.compromised { background: rgba(255, 68, 68, 0.3); border: 2px solid #ff4444; animation: pulse 1s infinite; }
+        .pipeline-arrow { font-size: 1.5em; color: #4ecdc4; margin: 0 10px; }
+        .pipeline-arrow.infected { color: #ff4444; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 10px rgba(255, 68, 68, 0.5); } 50% { box-shadow: 0 0 25px rgba(255, 68, 68, 0.8); } }
+
+        .dependency-tree {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .dep-item { padding: 8px 0; padding-left: 20px; border-left: 2px solid #333; margin-left: 10px; }
+        .dep-item.root { border-left: none; margin-left: 0; padding-left: 0; }
+        .dep-item.vulnerable { color: #ff4444; }
+        .dep-item.vulnerable::before { content: "⚠️ "; }
+        .dep-item.safe { color: #4ecdc4; }
+
+        .package-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .package-card.malicious { border: 2px solid #ff4444; background: rgba(255, 68, 68, 0.2); }
+        .package-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .package-name { font-weight: bold; font-size: 1.1em; }
+        .package-version { color: #888; }
+        .package-stats { display: flex; gap: 20px; font-size: 0.85em; color: #888; }
+
+        .attack-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .attack-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(155, 89, 182, 0.4); }
+
+        .terminal {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            height: 200px;
+            overflow-y: auto;
+        }
+        .terminal-line { margin-bottom: 5px; }
+        .terminal-line.command { color: #9b59b6; }
+        .terminal-line.output { color: #888; }
+        .terminal-line.warning { color: #f39c12; }
+        .terminal-line.danger { color: #ff4444; }
+        .terminal-line.success { color: #4ecdc4; }
+
+        .info-box {
+            background: rgba(155, 89, 182, 0.1);
+            border: 1px solid #9b59b6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-box h3 { color: #9b59b6; margin-bottom: 10px; }
+        .info-box p { color: #ccc; line-height: 1.6; }
+
+        .network-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+        .flow-node {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            min-width: 100px;
+        }
+        .flow-node .icon { font-size: 2em; margin-bottom: 5px; }
+        .flow-node.infected { background: rgba(255, 68, 68, 0.3); border: 2px solid #ff4444; }
+        .flow-arrow { font-size: 1.5em; color: #4ecdc4; }
+        .flow-arrow.malicious { color: #ff4444; animation: arrowBlink 0.5s infinite; }
+        @keyframes arrowBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="rank-badge">#3</span> Software Supply Chain Failures</h1>
+        <p class="subtitle">A03:2025 - Vulnerabilities from third-party dependencies, build systems, CI/CD pipelines</p>
+
+        <div class="grid">
+            <div class="panel full-width">
+                <h2>CI/CD Pipeline</h2>
+                <div class="pipeline">
+                    <div class="pipeline-stage" id="stage-code">
+                        <div class="icon">💻</div>
+                        <div>Source Code</div>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow1">➡️</div>
+                    <div class="pipeline-stage" id="stage-deps">
+                        <div class="icon">📦</div>
+                        <div>Dependencies</div>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow2">➡️</div>
+                    <div class="pipeline-stage" id="stage-build">
+                        <div class="icon">🔨</div>
+                        <div>Build</div>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow3">➡️</div>
+                    <div class="pipeline-stage" id="stage-test">
+                        <div class="icon">🧪</div>
+                        <div>Test</div>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow4">➡️</div>
+                    <div class="pipeline-stage" id="stage-deploy">
+                        <div class="icon">🚀</div>
+                        <div>Deploy</div>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow5">➡️</div>
+                    <div class="pipeline-stage" id="stage-prod">
+                        <div class="icon">🌐</div>
+                        <div>Production</div>
+                    </div>
+                </div>
+                <button class="attack-btn" onclick="simulateSupplyChainAttack()">Simulate Supply Chain Attack</button>
+            </div>
+
+            <div class="panel">
+                <h2>Dependency Tree</h2>
+                <div class="dependency-tree">
+                    <div class="dep-item root">📁 my-web-app@1.0.0</div>
+                    <div class="dep-item safe">├── react@18.2.0</div>
+                    <div class="dep-item safe">├── express@4.18.2</div>
+                    <div class="dep-item" id="dep-lodash">├── lodash@4.17.21</div>
+                    <div class="dep-item" id="dep-axios">├── axios@1.4.0</div>
+                    <div class="dep-item vulnerable" id="dep-malicious">├── event-stream@3.3.6 (BACKDOORED)</div>
+                    <div class="dep-item" id="dep-flatmap">│   └── flatmap-stream@0.1.1</div>
+                    <div class="dep-item safe">├── webpack@5.88.0</div>
+                    <div class="dep-item" id="dep-colors">└── colors@1.4.1 (SABOTAGED)</div>
+                </div>
+
+                <div class="package-card malicious" style="margin-top: 20px;">
+                    <div class="package-header">
+                        <span class="package-name">event-stream</span>
+                        <span class="package-version">v3.3.6</span>
+                    </div>
+                    <p style="color: #ff4444; font-size: 0.9em;">⚠️ Contains cryptocurrency-stealing malware injected by compromised maintainer</p>
+                    <div class="package-stats">
+                        <span>📥 8M weekly downloads</span>
+                        <span>⭐ 1.9k stars</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Attack Simulation Terminal</h2>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line command">$ npm install</div>
+                    <div class="terminal-line output">Installing dependencies...</div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Network Relevance</h3>
+                    <p>Compromised libraries or CI/CD pipelines can introduce malicious code traversing the network. Trusted repositories become vectors for remote exploitation, allowing attackers to exfiltrate data or establish backdoors across all systems using the compromised package.</p>
+                </div>
+            </div>
+
+            <div class="panel full-width">
+                <h2>Malware Propagation Network</h2>
+                <div class="network-flow">
+                    <div class="flow-node infected" id="npm-registry">
+                        <div class="icon">📦</div>
+                        <div>NPM Registry</div>
+                        <div style="font-size: 0.8em; color: #ff4444;">Compromised</div>
+                    </div>
+                    <div class="flow-arrow malicious" id="flow1">➡️</div>
+                    <div class="flow-node" id="dev-machine">
+                        <div class="icon">💻</div>
+                        <div>Dev Machine</div>
+                    </div>
+                    <div class="flow-arrow" id="flow2">➡️</div>
+                    <div class="flow-node" id="ci-server">
+                        <div class="icon">🔄</div>
+                        <div>CI/CD Server</div>
+                    </div>
+                    <div class="flow-arrow" id="flow3">➡️</div>
+                    <div class="flow-node" id="staging">
+                        <div class="icon">🧪</div>
+                        <div>Staging</div>
+                    </div>
+                    <div class="flow-arrow" id="flow4">➡️</div>
+                    <div class="flow-node" id="production">
+                        <div class="icon">🌐</div>
+                        <div>Production</div>
+                    </div>
+                    <div class="flow-arrow" id="flow5">➡️</div>
+                    <div class="flow-node" id="users">
+                        <div class="icon">👥</div>
+                        <div>End Users</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function addTerminalLine(text, type) {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function simulateSupplyChainAttack() {
+            const stages = ['stage-deps', 'stage-build', 'stage-test', 'stage-deploy', 'stage-prod'];
+            const arrows = ['arrow2', 'arrow3', 'arrow4', 'arrow5'];
+            const flowNodes = ['dev-machine', 'ci-server', 'staging', 'production', 'users'];
+            const flowArrows = ['flow2', 'flow3', 'flow4', 'flow5'];
+
+            addTerminalLine('', 'output');
+            addTerminalLine('$ npm install event-stream@3.3.6', 'command');
+            addTerminalLine('Resolving dependencies...', 'output');
+
+            setTimeout(() => {
+                addTerminalLine('+ event-stream@3.3.6', 'output');
+                addTerminalLine('+ flatmap-stream@0.1.1 (transitive)', 'warning');
+                addTerminalLine('', 'output');
+                addTerminalLine('⚠️  MALICIOUS CODE DETECTED IN DEPENDENCY!', 'danger');
+                document.getElementById('stage-deps').classList.add('compromised');
+                document.getElementById('arrow1').classList.add('infected');
+            }, 1000);
+
+            let delay = 2000;
+            stages.forEach((stage, i) => {
+                setTimeout(() => {
+                    document.getElementById(stage).classList.add('compromised');
+                    if (arrows[i]) {
+                        document.getElementById(arrows[i]).classList.add('infected');
+                    }
+
+                    if (stage === 'stage-build') {
+                        addTerminalLine('Building application with infected dependency...', 'warning');
+                    } else if (stage === 'stage-deploy') {
+                        addTerminalLine('Deploying backdoored application...', 'danger');
+                    } else if (stage === 'stage-prod') {
+                        addTerminalLine('CRITICAL: Malware now in production!', 'danger');
+                    }
+                }, delay);
+                delay += 800;
+            });
+
+            // Propagate through network
+            delay = 3000;
+            flowNodes.forEach((node, i) => {
+                setTimeout(() => {
+                    document.getElementById(node).classList.add('infected');
+                    if (flowArrows[i]) {
+                        document.getElementById(flowArrows[i]).classList.add('malicious');
+                    }
+                }, delay);
+                delay += 600;
+            });
+
+            setTimeout(() => {
+                addTerminalLine('', 'output');
+                addTerminalLine('Malware activities detected:', 'danger');
+                addTerminalLine('- Exfiltrating crypto wallet keys', 'danger');
+                addTerminalLine('- Establishing C2 connection', 'danger');
+                addTerminalLine('- Spreading to connected systems', 'danger');
+
+                alert('⚠️ Supply Chain Attack Complete!\n\n' +
+                      'The malicious package "event-stream" was installed\n' +
+                      'as a dependency and spread through:\n\n' +
+                      '1. NPM Registry → Developer machines\n' +
+                      '2. CI/CD pipeline → All build artifacts\n' +
+                      '3. Staging → Production servers\n' +
+                      '4. Production → End users\n\n' +
+                      'Impact:\n' +
+                      '• Cryptocurrency wallets compromised\n' +
+                      '• Backdoor access established\n' +
+                      '• All downstream users affected\n\n' +
+                      'This mirrors the real event-stream incident (2018)');
+            }, delay + 1000);
+        }
+    </script>
+</body>
+</html>

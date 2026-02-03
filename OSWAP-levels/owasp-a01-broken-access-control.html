@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A01:2025 - Broken Access Control Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #ff6b6b; text-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
+        .rank-badge { background: #ff6b6b; color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel h2 { color: #ff6b6b; margin-bottom: 20px; border-bottom: 2px solid #ff6b6b; padding-bottom: 10px; }
+
+        .user-panel { display: flex; gap: 20px; margin-bottom: 20px; }
+        .user-card {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .user-card:hover { transform: translateY(-5px); }
+        .user-card.selected { border-color: #ff6b6b; background: rgba(255, 107, 107, 0.2); }
+        .user-card .avatar { font-size: 3em; margin-bottom: 10px; }
+        .user-card .role { color: #888; font-size: 0.9em; }
+
+        .api-demo {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 20px;
+        }
+        .api-url { color: #4ecdc4; margin-bottom: 10px; word-break: break-all; }
+        .api-method { color: #ff6b6b; font-weight: bold; }
+
+        .resource-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .resource {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .resource .icon { font-size: 2em; margin-bottom: 10px; }
+        .resource.accessible { border: 2px solid #4ecdc4; }
+        .resource.blocked { border: 2px solid #ff4444; opacity: 0.5; }
+        .resource.exploited { border: 2px solid #ff6b6b; animation: pulse 1s infinite; background: rgba(255, 107, 107, 0.3); }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 107, 107, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(255, 107, 107, 0.8); }
+        }
+
+        .attack-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .attack-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4); }
+
+        .log-panel {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        .log-entry { margin-bottom: 5px; padding: 5px; border-radius: 3px; }
+        .log-entry.success { color: #4ecdc4; }
+        .log-entry.blocked { color: #ff4444; }
+        .log-entry.exploit { color: #ff6b6b; background: rgba(255, 107, 107, 0.2); }
+
+        .info-box {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-box h3 { color: #ff6b6b; margin-bottom: 10px; }
+        .info-box p { color: #ccc; line-height: 1.6; }
+
+        .network-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 30px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .network-node {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            min-width: 120px;
+        }
+        .network-node .icon { font-size: 2.5em; margin-bottom: 10px; }
+        .network-arrow { font-size: 2em; color: #4ecdc4; }
+        .network-arrow.attack { color: #ff6b6b; animation: arrowPulse 0.5s infinite; }
+        @keyframes arrowPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="rank-badge">#1</span> Broken Access Control</h1>
+        <p class="subtitle">A01:2025 - Users accessing resources or performing actions beyond their authorization</p>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Select User Identity</h2>
+                <div class="user-panel">
+                    <div class="user-card selected" onclick="selectUser('regular', this)">
+                        <div class="avatar">👤</div>
+                        <h3>John Smith</h3>
+                        <div class="role">Regular User (ID: 1001)</div>
+                    </div>
+                    <div class="user-card" onclick="selectUser('admin', this)">
+                        <div class="avatar">👑</div>
+                        <h3>Admin</h3>
+                        <div class="role">Administrator (ID: 1)</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 15px; color: #4ecdc4;">API Request</h3>
+                <div class="api-demo">
+                    <div><span class="api-method">GET</span> <span class="api-url" id="apiUrl">/api/users/1001/profile</span></div>
+                    <div style="margin-top: 10px; color: #888;">Authorization: Bearer <span id="tokenDisplay">eyJhbG...user_token</span></div>
+                </div>
+
+                <button class="attack-btn" onclick="simulateIDOR()">Simulate IDOR Attack (Change ID to 1)</button>
+                <button class="attack-btn" style="background: linear-gradient(135deg, #9b59b6, #8e44ad);" onclick="simulatePrivEsc()">Simulate Privilege Escalation</button>
+            </div>
+
+            <div class="panel">
+                <h2>Protected Resources</h2>
+                <div class="resource-grid">
+                    <div class="resource accessible" id="res-profile">
+                        <div class="icon">📄</div>
+                        <div>My Profile</div>
+                    </div>
+                    <div class="resource blocked" id="res-admin">
+                        <div class="icon">⚙️</div>
+                        <div>Admin Panel</div>
+                    </div>
+                    <div class="resource blocked" id="res-users">
+                        <div class="icon">👥</div>
+                        <div>All Users Data</div>
+                    </div>
+                    <div class="resource accessible" id="res-orders">
+                        <div class="icon">📦</div>
+                        <div>My Orders</div>
+                    </div>
+                    <div class="resource blocked" id="res-financial">
+                        <div class="icon">💰</div>
+                        <div>Financial Records</div>
+                    </div>
+                    <div class="resource blocked" id="res-logs">
+                        <div class="icon">📊</div>
+                        <div>System Logs</div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Network Relevance</h3>
+                    <p>APIs, session tokens, role checks, and direct object references can be bypassed, leading to unauthorised access and lateral movement across networks. Attackers can pivot from one compromised account to access sensitive resources throughout the network.</p>
+                </div>
+            </div>
+
+            <div class="panel full-width">
+                <h2>Attack Log</h2>
+                <div class="log-panel" id="logPanel">
+                    <div class="log-entry success">[INFO] User John Smith logged in with ID 1001</div>
+                    <div class="log-entry success">[INFO] Access granted to /api/users/1001/profile</div>
+                </div>
+
+                <div class="network-diagram">
+                    <div class="network-node">
+                        <div class="icon">💻</div>
+                        <div>Attacker</div>
+                        <div style="font-size: 0.8em; color: #888;">User ID: 1001</div>
+                    </div>
+                    <div class="network-arrow" id="arrow1">➡️</div>
+                    <div class="network-node">
+                        <div class="icon">🔒</div>
+                        <div>API Gateway</div>
+                        <div style="font-size: 0.8em; color: #888;">Access Control</div>
+                    </div>
+                    <div class="network-arrow" id="arrow2">➡️</div>
+                    <div class="network-node">
+                        <div class="icon">🗄️</div>
+                        <div>Database</div>
+                        <div style="font-size: 0.8em; color: #888;">User Records</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = 'regular';
+        let currentUserId = 1001;
+
+        function selectUser(type, element) {
+            document.querySelectorAll('.user-card').forEach(c => c.classList.remove('selected'));
+            element.classList.add('selected');
+            currentUser = type;
+            currentUserId = type === 'admin' ? 1 : 1001;
+            updateApiUrl();
+            resetResources();
+            addLog(`User switched to ${type === 'admin' ? 'Admin' : 'John Smith'}`, 'success');
+        }
+
+        function updateApiUrl() {
+            document.getElementById('apiUrl').textContent = `/api/users/${currentUserId}/profile`;
+            document.getElementById('tokenDisplay').textContent = currentUser === 'admin' ? 'eyJhbG...admin_token' : 'eyJhbG...user_token';
+        }
+
+        function resetResources() {
+            document.querySelectorAll('.resource').forEach(r => {
+                r.classList.remove('exploited');
+                if (currentUser === 'admin') {
+                    r.classList.remove('blocked');
+                    r.classList.add('accessible');
+                } else {
+                    if (r.id === 'res-profile' || r.id === 'res-orders') {
+                        r.classList.add('accessible');
+                        r.classList.remove('blocked');
+                    } else {
+                        r.classList.add('blocked');
+                        r.classList.remove('accessible');
+                    }
+                }
+            });
+        }
+
+        function addLog(message, type) {
+            const log = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function simulateIDOR() {
+            addLog('Attempting IDOR attack...', 'exploit');
+            addLog('Changing user ID from 1001 to 1 (Admin)', 'exploit');
+
+            document.getElementById('apiUrl').textContent = '/api/users/1/profile';
+            document.getElementById('arrow1').classList.add('attack');
+            document.getElementById('arrow2').classList.add('attack');
+
+            setTimeout(() => {
+                addLog('VULNERABILITY: Server did not verify ownership!', 'exploit');
+                addLog('SUCCESS: Retrieved admin profile data', 'exploit');
+                document.getElementById('res-admin').classList.add('exploited');
+                document.getElementById('res-users').classList.add('exploited');
+
+                setTimeout(() => {
+                    alert('⚠️ IDOR Attack Successful!\n\n' +
+                          'The attacker changed the user ID parameter from 1001 to 1.\n\n' +
+                          'The server failed to verify that the authenticated user\n' +
+                          'was authorized to access user ID 1\'s data.\n\n' +
+                          'Impact: Admin profile and sensitive data exposed!');
+                }, 500);
+            }, 1000);
+        }
+
+        function simulatePrivEsc() {
+            addLog('Attempting privilege escalation...', 'exploit');
+            addLog('Modifying role parameter in request body', 'exploit');
+
+            document.getElementById('arrow1').classList.add('attack');
+
+            setTimeout(() => {
+                addLog('POST /api/users/1001/role {"role": "admin"}', 'exploit');
+                addLog('VULNERABILITY: Role change not restricted!', 'exploit');
+
+                document.querySelectorAll('.resource').forEach(r => {
+                    r.classList.remove('blocked');
+                    r.classList.add('exploited');
+                });
+
+                setTimeout(() => {
+                    alert('⚠️ Privilege Escalation Successful!\n\n' +
+                          'The attacker modified their own role to "admin"\n' +
+                          'by manipulating the API request.\n\n' +
+                          'The server accepted the role change without\n' +
+                          'proper authorization checks.\n\n' +
+                          'Impact: Full admin access to all resources!');
+                }, 500);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

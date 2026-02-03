@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - VulnShop</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🛒</span>
+            <span>VulnShop</span>
+            <span class="warning-badge">VULNERABLE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/banking.html">Banking</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/tools.html">Tools</a>
+        </div>
+    </nav>
+
+    <div class="warning-banner">
+        ⚠️ A05: SQL Injection | A07: No Account Lockout | A04: MD5 Passwords
+    </div>
+
+    <main class="container">
+        <div class="auth-container">
+            <div class="auth-box">
+                <h2>🔐 Login</h2>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" placeholder="Enter username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+
+                <div class="auth-links">
+                    <a href="/register.html">Create Account</a>
+                    <a href="/reset-password.html">Forgot Password?</a>
+                </div>
+
+                <div id="loginResult" class="result-box"></div>
+            </div>
+
+            <div class="vuln-info-box">
+                <h3>🎯 Vulnerabilities on this page</h3>
+
+                <div class="vuln-item">
+                    <h4>A05: SQL Injection</h4>
+                    <p>The login form is vulnerable to SQL injection. Try these payloads:</p>
+                    <div class="payload-list">
+                        <button class="payload-btn" onclick="setPayload(`' OR '1'='1' --`, '')">Auth Bypass (any user)</button>
+                        <button class="payload-btn" onclick="setPayload(`admin' --`, '')">Login as admin</button>
+                        <button class="payload-btn" onclick="setPayload(`' UNION SELECT 1,'hacked','password','admin','','','','' --`, '')">Inject User</button>
+                    </div>
+                </div>
+
+                <div class="vuln-item">
+                    <h4>A07: No Account Lockout</h4>
+                    <p>There's no limit on login attempts. Brute force is possible.</p>
+                    <button class="payload-btn" onclick="bruteForce()">Simulate Brute Force</button>
+                </div>
+
+                <div class="vuln-item">
+                    <h4>A04: Weak Password Hashing</h4>
+                    <p>Passwords are stored using MD5 (easily crackable).</p>
+                    <p><small>Default creds: admin:admin123, john:password123</small></p>
+                </div>
+
+                <div class="vuln-item">
+                    <h4>A09: No Logging</h4>
+                    <p>Failed login attempts are not properly logged or monitored.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="sql-display">
+            <h4>Generated SQL Query:</h4>
+            <pre id="sqlQuery">SELECT * FROM users WHERE username = '<span id="sqlUser">?</span>' AND password = '<span id="sqlPass">?</span>'</pre>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultBox = document.getElementById('loginResult');
+
+            // Update SQL display
+            document.getElementById('sqlUser').textContent = username;
+            document.getElementById('sqlPass').textContent = password ? '[MD5_HASH]' : '';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultBox.className = 'result-box success';
+                    resultBox.innerHTML = `
+                        <h4>✅ Login Successful!</h4>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                        <p>Check your cookies - user_data is set without signature!</p>
+                    `;
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                } else {
+                    resultBox.className = 'result-box error';
+                    resultBox.innerHTML = `
+                        <h4>❌ Login Failed</h4>
+                        <p>${data.message}</p>
+                        ${data.query ? `<pre>Query: ${data.query}</pre>` : ''}
+                    `;
+                }
+            } catch (error) {
+                resultBox.className = 'result-box error';
+                resultBox.innerHTML = `<h4>Error</h4><p>${error.message}</p>`;
+            }
+        });
+
+        function setPayload(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            document.getElementById('sqlUser').textContent = username;
+        }
+
+        async function bruteForce() {
+            const passwords = ['password', 'admin123', '123456', 'password123', 'letmein'];
+            const resultBox = document.getElementById('loginResult');
+
+            resultBox.className = 'result-box';
+            resultBox.innerHTML = '<h4>🔨 Brute Force Attack</h4><div id="bruteProgress"></div>';
+
+            const progress = document.getElementById('bruteProgress');
+
+            for (const pwd of passwords) {
+                progress.innerHTML += `<p>Trying: admin:${pwd}...</p>`;
+
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: 'admin', password: pwd })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    progress.innerHTML += `<p style="color: #4caf50;">✅ SUCCESS! Password found: ${pwd}</p>`;
+                    progress.innerHTML += `<p style="color: #ff9800;">⚠️ No lockout after ${passwords.indexOf(pwd) + 1} attempts!</p>`;
+                    return;
+                }
+
+                await new Promise(r => setTimeout(r, 500));
+            }
+
+            progress.innerHTML += `<p>Attack complete. Password not in wordlist.</p>`;
+        }
+    </script>
+</body>
+</html>

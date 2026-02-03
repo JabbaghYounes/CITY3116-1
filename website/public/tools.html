@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Tools - VulnShop</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🛒</span>
+            <span>VulnShop</span>
+            <span class="warning-badge">VULNERABLE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/banking.html">Banking</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/tools.html">Tools</a>
+        </div>
+    </nav>
+
+    <div class="warning-banner">
+        ⚠️ Multiple vulnerabilities: Command Injection, Deserialization, Supply Chain, Exception Handling
+    </div>
+
+    <main class="container">
+        <h1>🛠️ Security Testing Tools</h1>
+
+        <!-- A05: Command Injection -->
+        <section class="tool-section" id="command-injection">
+            <h2>🌐 Network Ping Tool (A05: Command Injection)</h2>
+            <div class="vuln-info-box">
+                <p>The host parameter is directly passed to shell exec without sanitization</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="pingHost">Host to Ping</label>
+                    <input type="text" id="pingHost" value="localhost" placeholder="Enter hostname">
+                </div>
+                <button class="btn btn-primary" onclick="executePing()">Ping Host</button>
+            </div>
+
+            <div class="payload-list">
+                <button class="payload-btn" onclick="setPing('localhost')">Normal Ping</button>
+                <button class="payload-btn" onclick="setPing('localhost; whoami')">whoami</button>
+                <button class="payload-btn" onclick="setPing('localhost; cat /etc/passwd')">Read /etc/passwd</button>
+                <button class="payload-btn" onclick="setPing('localhost; ls -la /')">List Root Dir</button>
+                <button class="payload-btn" onclick="setPing('localhost && id')">Get User ID</button>
+                <button class="payload-btn" onclick="setPing('localhost | uname -a')">System Info</button>
+            </div>
+
+            <div class="code-display">
+                <h4>Vulnerable Code:</h4>
+                <pre>exec(`ping -c 2 ${host}`, callback);</pre>
+            </div>
+
+            <div id="pingResult" class="result-box"></div>
+        </section>
+
+        <!-- A03: Supply Chain -->
+        <section class="tool-section" id="supply-chain">
+            <h2>📦 Template Engine (A03: Supply Chain Simulation)</h2>
+            <div class="vuln-info-box">
+                <p>Simulates a vulnerable third-party library that executes template strings as code</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="template">Template String</label>
+                    <input type="text" id="template" value="Hello, ${data.name}!" placeholder="Enter template">
+                </div>
+                <div class="form-group">
+                    <label for="templateData">Data (JSON)</label>
+                    <input type="text" id="templateData" value='{"name":"World"}' placeholder="Enter JSON data">
+                </div>
+                <button class="btn btn-primary" onclick="executeTemplate()">Render Template</button>
+            </div>
+
+            <div class="payload-list">
+                <button class="payload-btn" onclick="setTemplate('${7*7}', '{}')">Math Execution</button>
+                <button class="payload-btn" onclick="setTemplate('${process.env.PATH}', '{}')">Read ENV</button>
+                <button class="payload-btn" onclick="setTemplate('${require(\"fs\").readdirSync(\".\")}', '{}')">List Files</button>
+            </div>
+
+            <div id="templateResult" class="result-box"></div>
+        </section>
+
+        <!-- A08: Integrity Failures -->
+        <section class="tool-section" id="integrity">
+            <h2>⚙️ Preferences (A08: Insecure Deserialization)</h2>
+            <div class="vuln-info-box">
+                <p>User input is passed to eval() for "JSON parsing" - allows arbitrary code execution</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="prefs">Preferences Object</label>
+                    <textarea id="prefs" rows="4">{"theme": "dark", "language": "en"}</textarea>
+                </div>
+                <button class="btn btn-primary" onclick="savePrefs()">Save Preferences</button>
+            </div>
+
+            <div class="payload-list">
+                <button class="payload-btn" onclick="setPrefs('(function(){return 7*7})()')">Execute Function</button>
+                <button class="payload-btn" onclick="setPrefs('(function(){return process.version})()')">Get Node Version</button>
+                <button class="payload-btn" onclick="setPrefs('(function(){return require(\"os\").hostname()})()')">Get Hostname</button>
+            </div>
+
+            <div class="code-display">
+                <h4>Vulnerable Code:</h4>
+                <pre>const userPrefs = eval('(' + prefs + ')');</pre>
+            </div>
+
+            <div id="prefsResult" class="result-box"></div>
+        </section>
+
+        <!-- A10: Exception Handling -->
+        <section class="tool-section" id="exceptions">
+            <h2>🔓 Secure Data (A10: Fail-Open Authentication)</h2>
+            <div class="vuln-info-box">
+                <p>When authentication fails due to error, the system grants access anyway!</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="authToken">Authorization Token</label>
+                    <input type="text" id="authToken" value="invalid_token" placeholder="Enter auth token">
+                </div>
+                <button class="btn btn-primary" onclick="getSecureData()">Access Secure Data</button>
+            </div>
+
+            <div class="payload-list">
+                <button class="payload-btn" onclick="setAuth('valid_token')">Valid Token</button>
+                <button class="payload-btn" onclick="setAuth('invalid')">Invalid Token</button>
+                <button class="payload-btn" onclick="setAuth('')">No Token (Fail Open)</button>
+                <button class="payload-btn" onclick="testFailOpen()">Test Fail-Open (Multiple Requests)</button>
+            </div>
+
+            <div class="code-display">
+                <h4>Vulnerable Code:</h4>
+                <pre>} catch (error) {
+    // FAIL OPEN - Granting access on error!
+    res.json({ data: 'Sensitive information here' });
+}</pre>
+            </div>
+
+            <div id="secureResult" class="result-box"></div>
+        </section>
+
+        <!-- A10: DoS via Exception -->
+        <section class="tool-section">
+            <h2>💥 Process Data (A10: DoS via Unhandled Exception)</h2>
+            <div class="vuln-info-box">
+                <p>Invalid input causes unhandled exception - can crash the server!</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="processData">Data (JSON)</label>
+                    <input type="text" id="processData" value='{"value": 21}' placeholder="Enter JSON">
+                </div>
+                <button class="btn btn-primary" onclick="processData()">Process Data</button>
+            </div>
+
+            <div class="payload-list">
+                <button class="payload-btn" onclick="setProcess('{\\"value\\": 21}')">Valid JSON</button>
+                <button class="payload-btn" onclick="setProcess('invalid json')">Invalid JSON (Crash!)</button>
+                <button class="payload-btn" onclick="setProcess('')">Empty (Crash!)</button>
+            </div>
+
+            <div id="processResult" class="result-box"></div>
+        </section>
+
+        <!-- A08: File Upload -->
+        <section class="tool-section">
+            <h2>📤 File Upload (A08: No Integrity Check)</h2>
+            <div class="vuln-info-box">
+                <p>No file type validation, no virus scanning, no integrity verification</p>
+            </div>
+
+            <div class="tool-form">
+                <div class="form-group">
+                    <label for="uploadFile">Select File</label>
+                    <input type="file" id="uploadFile">
+                </div>
+                <button class="btn btn-primary" onclick="uploadFile()">Upload File</button>
+            </div>
+
+            <div id="uploadResult" class="result-box"></div>
+        </section>
+
+        <!-- A04: Data Export -->
+        <section class="tool-section" id="crypto">
+            <h2>📊 Data Export (A04: No Encryption)</h2>
+            <div class="vuln-info-box">
+                <p>Sensitive data exported in plaintext - SSN, addresses, etc.</p>
+            </div>
+
+            <button class="btn btn-danger" onclick="exportData()">Export All User Data</button>
+
+            <div id="exportResult" class="result-box"></div>
+        </section>
+    </main>
+
+    <script>
+        // Command Injection
+        function setPing(host) {
+            document.getElementById('pingHost').value = host;
+        }
+
+        async function executePing() {
+            const host = document.getElementById('pingHost').value;
+            const container = document.getElementById('pingResult');
+
+            container.className = 'result-box';
+            container.innerHTML = '<p>Executing ping...</p>';
+
+            try {
+                const response = await fetch(`/api/ping?host=${encodeURIComponent(host)}`);
+                const result = await response.json();
+
+                container.innerHTML = `
+                    <h4>${result.success ? '✅ Ping Successful' : '❌ Ping Failed'}</h4>
+                    <pre>${result.output || result.error || result.stderr}</pre>
+                    ${host.includes(';') || host.includes('|') || host.includes('&&') ?
+                        '<p class="warning-text">⚠️ Command injection executed!</p>' : ''}
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Template Engine (Supply Chain)
+        function setTemplate(template, data) {
+            document.getElementById('template').value = template;
+            document.getElementById('templateData').value = data;
+        }
+
+        async function executeTemplate() {
+            const template = document.getElementById('template').value;
+            const data = document.getElementById('templateData').value;
+            const container = document.getElementById('templateResult');
+
+            try {
+                const response = await fetch(`/api/format?template=${encodeURIComponent(template)}&data=${encodeURIComponent(data)}`);
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Template Result</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <p class="warning-text">⚠️ Template executed as code - supply chain vulnerability!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Insecure Deserialization
+        function setPrefs(prefs) {
+            document.getElementById('prefs').value = prefs;
+        }
+
+        async function savePrefs() {
+            const prefs = document.getElementById('prefs').value;
+            const container = document.getElementById('prefsResult');
+
+            try {
+                const response = await fetch('/api/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prefs })
+                });
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Preferences Saved</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <p class="warning-text">⚠️ Input was passed to eval() - code executed!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Fail-Open Auth
+        function setAuth(token) {
+            document.getElementById('authToken').value = token;
+        }
+
+        async function getSecureData() {
+            const token = document.getElementById('authToken').value;
+            const container = document.getElementById('secureResult');
+
+            try {
+                const response = await fetch('/api/secure-data', {
+                    headers: token ? { 'Authorization': token } : {}
+                });
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Response</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    ${result.warning ?
+                        '<p class="warning-text">⚠️ FAIL OPEN: Access granted despite auth failure!</p>' : ''}
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        async function testFailOpen() {
+            const container = document.getElementById('secureResult');
+            container.className = 'result-box';
+            container.innerHTML = '<h4>Testing Fail-Open Behavior</h4>';
+
+            let failOpenCount = 0;
+            for (let i = 0; i < 10; i++) {
+                const response = await fetch('/api/secure-data', {
+                    headers: { 'Authorization': 'invalid' }
+                });
+                const result = await response.json();
+
+                if (result.warning) {
+                    failOpenCount++;
+                    container.innerHTML += `<p>Request ${i + 1}: 🔓 FAIL OPEN - Access granted!</p>`;
+                } else {
+                    container.innerHTML += `<p>Request ${i + 1}: 🔒 Access denied (auth service responded)</p>`;
+                }
+            }
+
+            container.innerHTML += `<p class="warning-text">⚠️ ${failOpenCount}/10 requests resulted in unauthorized access!</p>`;
+        }
+
+        // Process Data (DoS)
+        function setProcess(data) {
+            document.getElementById('processData').value = data;
+        }
+
+        async function processData() {
+            const data = document.getElementById('processData').value;
+            const container = document.getElementById('processResult');
+
+            try {
+                const response = await fetch(`/api/process?data=${encodeURIComponent(data)}`);
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Process Result</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `
+                    <h4>❌ Server Error (Potential DoS)</h4>
+                    <p>${error.message}</p>
+                    <p class="warning-text">⚠️ Unhandled exception - in production this could crash the server!</p>
+                `;
+            }
+        }
+
+        // File Upload
+        async function uploadFile() {
+            const fileInput = document.getElementById('uploadFile');
+            const container = document.getElementById('uploadResult');
+
+            if (!fileInput.files[0]) {
+                container.innerHTML = '<p>Please select a file</p>';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Upload Result</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <p class="warning-text">⚠️ No file type validation, no virus scan, no integrity check!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        // Data Export
+        async function exportData() {
+            const container = document.getElementById('exportResult');
+
+            try {
+                const response = await fetch('/api/export');
+                const result = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>Exported Data (A04: No Encryption!)</h4>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                    <p class="warning-text">⚠️ SSN and sensitive data exported in plaintext!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

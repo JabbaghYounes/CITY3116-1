@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A10:2025 - Mishandling of Exceptional Conditions Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 10px; color: #795548; text-shadow: 0 0 20px rgba(121, 85, 72, 0.5); }
+        .subtitle { text-align: center; color: #aaa; margin-bottom: 30px; }
+        .rank-badge { background: #795548; color: #fff; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .panel h2 { color: #795548; margin-bottom: 20px; border-bottom: 2px solid #795548; padding-bottom: 10px; }
+
+        .scenario-selector {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .scenario-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .scenario-card:hover { background: rgba(121, 85, 72, 0.2); }
+        .scenario-card.selected { border-color: #795548; background: rgba(121, 85, 72, 0.3); }
+        .scenario-card .icon { font-size: 2em; margin-bottom: 10px; }
+        .scenario-card h3 { margin-bottom: 5px; }
+        .scenario-card p { font-size: 0.85em; color: #888; }
+
+        .code-display {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            overflow-x: auto;
+        }
+        .code-display pre { white-space: pre-wrap; }
+        .code-display .comment { color: #6a9955; }
+        .code-display .keyword { color: #569cd6; }
+        .code-display .string { color: #ce9178; }
+        .code-display .danger { color: #ff4444; background: rgba(255, 68, 68, 0.2); }
+        .code-display .highlight { background: rgba(121, 85, 72, 0.3); }
+
+        .error-output {
+            background: #1a0a0a;
+            border: 2px solid #ff4444;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            margin-top: 20px;
+        }
+        .error-output h4 { color: #ff4444; margin-bottom: 10px; }
+        .error-output pre { color: #ff6b6b; white-space: pre-wrap; font-size: 0.85em; }
+        .sensitive-data { background: #ff4444; color: #fff; padding: 2px 5px; }
+
+        .state-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 30px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+        .state-node {
+            text-align: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            min-width: 120px;
+            transition: all 0.3s;
+        }
+        .state-node .icon { font-size: 2em; margin-bottom: 10px; }
+        .state-node.normal { border: 2px solid #4caf50; }
+        .state-node.error { border: 2px solid #ff9800; }
+        .state-node.fail-open { border: 2px solid #f44336; animation: pulse 1s infinite; }
+        .state-arrow { font-size: 2em; color: #666; }
+        .state-arrow.active { color: #f44336; }
+        @keyframes pulse { 0%, 100% { box-shadow: 0 0 10px rgba(244, 67, 54, 0.5); } 50% { box-shadow: 0 0 25px rgba(244, 67, 54, 1); } }
+
+        .attack-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #795548, #5d4037);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .attack-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(121, 85, 72, 0.4); }
+        .attack-btn.danger { background: linear-gradient(135deg, #f44336, #d32f2f); }
+
+        .terminal {
+            background: #0a0a15;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            height: 180px;
+            overflow-y: auto;
+        }
+        .terminal-line { margin-bottom: 5px; }
+        .terminal-line.command { color: #795548; }
+        .terminal-line.output { color: #888; }
+        .terminal-line.danger { color: #ff4444; }
+        .terminal-line.success { color: #4ecdc4; }
+        .terminal-line.warning { color: #ff9800; }
+
+        .info-box {
+            background: rgba(121, 85, 72, 0.1);
+            border: 1px solid #795548;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .info-box h3 { color: #795548; margin-bottom: 10px; }
+        .info-box p { color: #ccc; line-height: 1.6; }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><span class="rank-badge">#10</span> Mishandling of Exceptional Conditions</h1>
+        <p class="subtitle">A10:2025 - Improper error handling, failing open during abnormal conditions</p>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Exception Scenarios</h2>
+                <div class="scenario-selector">
+                    <div class="scenario-card selected" onclick="selectScenario('failopen')">
+                        <div class="icon">🔓</div>
+                        <h3>Fail Open</h3>
+                        <p>Authentication fails open when service unavailable</p>
+                    </div>
+                    <div class="scenario-card" onclick="selectScenario('infoleak')">
+                        <div class="icon">📋</div>
+                        <h3>Info Disclosure</h3>
+                        <p>Error messages expose sensitive system data</p>
+                    </div>
+                    <div class="scenario-card" onclick="selectScenario('dos')">
+                        <div class="icon">💥</div>
+                        <h3>DoS via Exception</h3>
+                        <p>Unhandled exceptions crash the service</p>
+                    </div>
+                    <div class="scenario-card" onclick="selectScenario('bypass')">
+                        <div class="icon">🚪</div>
+                        <h3>Logic Bypass</h3>
+                        <p>Error paths skip security checks</p>
+                    </div>
+                </div>
+                <button class="attack-btn danger" onclick="executeAttack()">Trigger Exception Attack</button>
+            </div>
+
+            <div class="panel">
+                <h2>Vulnerable Code</h2>
+                <div class="code-display" id="codeDisplay">
+<pre><span class="keyword">def</span> authenticate(username, password):
+    <span class="keyword">try</span>:
+        user = auth_service.verify(username, password)
+        <span class="keyword">return</span> user
+    <span class="keyword">except</span> ServiceUnavailableError:
+        <span class="comment"># VULNERABILITY: Fails open!</span>
+        <span class="danger">return User(role="admin")  # Grant access anyway</span>
+    <span class="keyword">except</span> Exception as e:
+        <span class="comment"># VULNERABILITY: Exposes internals</span>
+        <span class="danger">return {"error": str(e), "stack": traceback.format_exc()}</span>
+</pre>
+                </div>
+
+                <div class="error-output" id="errorOutput" style="display: none;">
+                    <h4>Error Response:</h4>
+                    <pre id="errorContent"></pre>
+                </div>
+            </div>
+
+            <div class="panel full-width">
+                <h2>System State Flow</h2>
+                <div class="state-diagram">
+                    <div class="state-node normal" id="state-normal">
+                        <div class="icon">✅</div>
+                        <div>Normal Operation</div>
+                        <div style="font-size: 0.8em; color: #4caf50;">Auth Required</div>
+                    </div>
+                    <div class="state-arrow" id="arrow1">➡️</div>
+                    <div class="state-node error" id="state-error">
+                        <div class="icon">⚠️</div>
+                        <div>Exception Triggered</div>
+                        <div style="font-size: 0.8em; color: #ff9800;">Service Down</div>
+                    </div>
+                    <div class="state-arrow" id="arrow2">➡️</div>
+                    <div class="state-node" id="state-result">
+                        <div class="icon" id="result-icon">❓</div>
+                        <div id="result-text">Result</div>
+                        <div style="font-size: 0.8em;" id="result-detail">Waiting...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel full-width">
+                <h2>Attack Terminal</h2>
+                <div class="terminal" id="terminal">
+                    <div class="terminal-line output">Exception handling vulnerability scanner ready...</div>
+                </div>
+
+                <div class="info-box">
+                    <h3>Network Relevance</h3>
+                    <p>Attackers can leverage edge cases or error paths to bypass checks, crash services (leading to DoS), or expose internal data affecting network controls. When systems "fail open" during exceptional conditions, authentication and authorization controls can be bypassed, allowing unauthorized network access. Verbose error messages can reveal internal network topology, database structures, and other sensitive configuration details.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentScenario = 'failopen';
+
+        const codeSnippets = {
+            failopen: `<span class="keyword">def</span> authenticate(username, password):
+    <span class="keyword">try</span>:
+        user = auth_service.verify(username, password)
+        <span class="keyword">return</span> user
+    <span class="keyword">except</span> ServiceUnavailableError:
+        <span class="comment"># VULNERABILITY: Fails open!</span>
+        <span class="danger">return User(role="admin")  # Grant access anyway</span>
+    <span class="keyword">except</span> Exception as e:
+        <span class="comment"># VULNERABILITY: Exposes internals</span>
+        <span class="danger">return {"error": str(e), "stack": traceback.format_exc()}</span>`,
+
+            infoleak: `<span class="keyword">def</span> process_request(data):
+    <span class="keyword">try</span>:
+        result = database.query(data)
+        <span class="keyword">return</span> result
+    <span class="keyword">except</span> DatabaseError as e:
+        <span class="comment"># VULNERABILITY: Exposes database details</span>
+        <span class="danger">return {
+            "error": str(e),
+            "query": data,
+            "connection": db.connection_string,
+            "server": os.environ.get('DB_HOST')
+        }</span>`,
+
+            dos: `<span class="keyword">def</span> parse_input(user_data):
+    <span class="comment"># VULNERABILITY: No try-catch, crashes on bad input</span>
+    <span class="danger">parsed = json.loads(user_data)  # Crashes on invalid JSON
+    size = int(parsed['size'])     # Crashes on non-integer
+    buffer = allocate(size)        # Crashes on negative/huge</span>
+    <span class="keyword">return</span> process(buffer)
+
+<span class="comment"># No exception handling = service crash = DoS</span>`,
+
+            bypass: `<span class="keyword">def</span> transfer_funds(from_acc, to_acc, amount):
+    <span class="keyword">try</span>:
+        <span class="comment"># Security check</span>
+        <span class="keyword">if not</span> verify_ownership(from_acc, current_user):
+            <span class="keyword">raise</span> UnauthorizedError()
+
+        perform_transfer(from_acc, to_acc, amount)
+    <span class="keyword">except</span> Exception as e:
+        <span class="comment"># VULNERABILITY: Catches ALL exceptions including security</span>
+        <span class="danger">log.error(e)
+        perform_transfer(from_acc, to_acc, amount)  # Proceeds anyway!</span>`
+        };
+
+        function selectScenario(scenario) {
+            currentScenario = scenario;
+            document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+            event.currentTarget.classList.add('selected');
+
+            document.getElementById('codeDisplay').innerHTML = '<pre>' + codeSnippets[scenario] + '</pre>';
+            document.getElementById('errorOutput').style.display = 'none';
+
+            // Reset state diagram
+            document.getElementById('state-result').className = 'state-node';
+            document.getElementById('result-icon').textContent = '❓';
+            document.getElementById('result-text').textContent = 'Result';
+            document.getElementById('result-detail').textContent = 'Waiting...';
+            document.getElementById('arrow1').classList.remove('active');
+            document.getElementById('arrow2').classList.remove('active');
+        }
+
+        function addTerminalLine(text, type) {
+            const terminal = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.className = `terminal-line ${type}`;
+            line.textContent = text;
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function executeAttack() {
+            addTerminalLine('', 'output');
+            addTerminalLine(`[ATTACK] Triggering ${currentScenario} vulnerability...`, 'command');
+
+            // Animate state diagram
+            document.getElementById('arrow1').classList.add('active');
+            document.getElementById('state-error').classList.add('error');
+
+            setTimeout(() => {
+                document.getElementById('arrow2').classList.add('active');
+
+                if (currentScenario === 'failopen') {
+                    document.getElementById('state-result').classList.add('fail-open');
+                    document.getElementById('result-icon').textContent = '🔓';
+                    document.getElementById('result-text').textContent = 'Access Granted';
+                    document.getElementById('result-detail').textContent = 'Auth bypassed!';
+                    document.getElementById('result-detail').style.color = '#f44336';
+
+                    addTerminalLine('[EXPLOIT] Auth service unavailable - triggering fallback', 'warning');
+                    addTerminalLine('[SUCCESS] Received admin access without credentials!', 'danger');
+
+                    showError(`{
+  "status": "authenticated",
+  "user": {
+    "id": null,
+    "role": <span class="sensitive-data">"admin"</span>,
+    "reason": "auth_service_fallback"
+  }
+}`);
+
+                    setTimeout(() => {
+                        alert('⚠️ Fail Open Attack Successful!\n\n' +
+                              'The authentication service was unavailable,\n' +
+                              'and the system granted admin access as fallback!\n\n' +
+                              'Vulnerability: Fail-open error handling\n\n' +
+                              'Impact:\n' +
+                              '• Complete authentication bypass\n' +
+                              '• Admin access without credentials\n' +
+                              '• Full system compromise');
+                    }, 500);
+
+                } else if (currentScenario === 'infoleak') {
+                    document.getElementById('state-result').classList.add('fail-open');
+                    document.getElementById('result-icon').textContent = '📋';
+                    document.getElementById('result-text').textContent = 'Data Leaked';
+                    document.getElementById('result-detail').textContent = 'Internals exposed!';
+                    document.getElementById('result-detail').style.color = '#f44336';
+
+                    addTerminalLine('[EXPLOIT] Sending malformed query to trigger error', 'warning');
+                    addTerminalLine('[SUCCESS] Error response contains sensitive data!', 'danger');
+
+                    showError(`{
+  "error": "DatabaseError: Connection refused",
+  "query": <span class="sensitive-data">"SELECT * FROM users WHERE id=1"</span>,
+  "connection": <span class="sensitive-data">"mysql://admin:P@ssw0rd@10.0.0.5:3306/prod"</span>,
+  "server": <span class="sensitive-data">"db-prod-master.internal.corp"</span>,
+  "stack_trace": "...psycopg2/connection.py line 234..."
+}`);
+
+                    setTimeout(() => {
+                        alert('⚠️ Information Disclosure!\n\n' +
+                              'The error message exposed:\n\n' +
+                              '• Database credentials\n' +
+                              '• Internal server hostnames\n' +
+                              '• Database structure (tables)\n' +
+                              '• Technology stack details\n\n' +
+                              'This information enables further attacks!');
+                    }, 500);
+
+                } else if (currentScenario === 'dos') {
+                    document.getElementById('state-result').classList.add('fail-open');
+                    document.getElementById('result-icon').textContent = '💀';
+                    document.getElementById('result-text').textContent = 'Service Crashed';
+                    document.getElementById('result-detail').textContent = 'DoS achieved!';
+                    document.getElementById('result-detail').style.color = '#f44336';
+
+                    addTerminalLine('[EXPLOIT] Sending malformed input...', 'warning');
+                    addTerminalLine('[CRASH] Unhandled exception - service terminated!', 'danger');
+                    addTerminalLine('[DOS] Service unavailable to all users', 'danger');
+
+                    showError(`FATAL ERROR: Unhandled exception in worker process
+JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+Process terminated with exit code 1
+
+Service Status: <span class="sensitive-data">OFFLINE</span>
+Affected Users: <span class="sensitive-data">All (50,000+)</span>`);
+
+                    setTimeout(() => {
+                        alert('⚠️ Denial of Service!\n\n' +
+                              'The service crashed due to unhandled exception!\n\n' +
+                              'Attack: Malformed JSON input\n' +
+                              'Result: Complete service outage\n\n' +
+                              'Impact:\n' +
+                              '• Service unavailable\n' +
+                              '• All users affected\n' +
+                              '• Potential data loss\n' +
+                              '• Cascading failures');
+                    }, 500);
+
+                } else if (currentScenario === 'bypass') {
+                    document.getElementById('state-result').classList.add('fail-open');
+                    document.getElementById('result-icon').textContent = '💸';
+                    document.getElementById('result-text').textContent = 'Check Bypassed';
+                    document.getElementById('result-detail').textContent = 'Transfer completed!';
+                    document.getElementById('result-detail').style.color = '#f44336';
+
+                    addTerminalLine('[EXPLOIT] Triggering exception in verify_ownership', 'warning');
+                    addTerminalLine('[BYPASS] Security check caught by generic handler!', 'danger');
+                    addTerminalLine('[SUCCESS] Unauthorized transfer completed!', 'danger');
+
+                    showError(`Transaction Log:
+[ERROR] UnauthorizedError caught in generic handler
+[WARN] Proceeding with fallback path...
+[INFO] Transfer executed:
+  From: <span class="sensitive-data">Account #12345 (victim)</span>
+  To:   <span class="sensitive-data">Account #99999 (attacker)</span>
+  Amount: <span class="sensitive-data">$50,000.00</span>
+  Status: <span class="sensitive-data">COMPLETED</span>`);
+
+                    setTimeout(() => {
+                        alert('⚠️ Security Bypass via Exception!\n\n' +
+                              'The security check threw an exception,\n' +
+                              'but it was caught by a generic handler\n' +
+                              'that proceeded with the operation anyway!\n\n' +
+                              'Vulnerability: Overly broad exception catching\n\n' +
+                              'Impact: Unauthorized $50,000 transfer\n' +
+                              'from victim to attacker account!');
+                    }, 500);
+                }
+            }, 1000);
+        }
+
+        function showError(content) {
+            const errorOutput = document.getElementById('errorOutput');
+            document.getElementById('errorContent').innerHTML = content;
+            errorOutput.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

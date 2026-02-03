@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - VulnShop</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🛒</span>
+            <span>VulnShop</span>
+            <span class="warning-badge">VULNERABLE</span>
+        </div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/banking.html">Banking</a>
+            <a href="/admin.html">Admin</a>
+            <a href="/tools.html">Tools</a>
+        </div>
+    </nav>
+
+    <div class="warning-banner">
+        ⚠️ A01: Broken Access Control - No authentication required for admin functions!
+    </div>
+
+    <main class="container">
+        <h1>⚙️ Admin Panel</h1>
+
+        <div class="vuln-info-box">
+            <h3>🎯 Vulnerabilities Demonstrated</h3>
+            <ul>
+                <li><strong>A01:</strong> No authentication check on admin endpoints</li>
+                <li><strong>A01:</strong> IDOR - Access any user's profile by changing ID</li>
+                <li><strong>A01:</strong> Privilege escalation via role modification</li>
+                <li><strong>A02:</strong> Debug endpoint exposes configuration</li>
+            </ul>
+        </div>
+
+        <section class="admin-section">
+            <h2>👥 User Management</h2>
+            <p>This endpoint should require admin authentication but doesn't!</p>
+            <button class="btn btn-primary" onclick="loadUsers()">Load All Users (No Auth Required)</button>
+
+            <div id="usersTable" class="table-container"></div>
+        </section>
+
+        <section class="admin-section">
+            <h2>🔍 IDOR - View User Profile</h2>
+            <p>Access any user's sensitive data by changing the ID</p>
+            <div class="input-group">
+                <input type="number" id="userIdInput" value="1" min="1">
+                <button class="btn" onclick="viewUser()">View User Profile</button>
+            </div>
+            <div class="payload-list">
+                <button class="payload-btn" onclick="document.getElementById('userIdInput').value=1; viewUser()">Admin (ID: 1)</button>
+                <button class="payload-btn" onclick="document.getElementById('userIdInput').value=2; viewUser()">John (ID: 2)</button>
+                <button class="payload-btn" onclick="document.getElementById('userIdInput').value=3; viewUser()">Jane (ID: 3)</button>
+            </div>
+            <div id="userProfile" class="result-box"></div>
+        </section>
+
+        <section class="admin-section">
+            <h2>⬆️ Privilege Escalation</h2>
+            <p>Modify any user's role without authorization</p>
+            <div class="form-inline">
+                <input type="number" id="escUserIdInput" value="2" placeholder="User ID">
+                <select id="newRole">
+                    <option value="user">user</option>
+                    <option value="manager">manager</option>
+                    <option value="admin">admin</option>
+                </select>
+                <button class="btn btn-danger" onclick="escalatePrivilege()">Change Role</button>
+            </div>
+            <div id="escalateResult" class="result-box"></div>
+        </section>
+
+        <section class="admin-section">
+            <h2>🗑️ Delete User (No Auth)</h2>
+            <p>Delete any user account without verification</p>
+            <div class="input-group">
+                <input type="number" id="deleteUserId" value="5" placeholder="User ID to delete">
+                <button class="btn btn-danger" onclick="deleteUser()">Delete User</button>
+            </div>
+            <div id="deleteResult" class="result-box"></div>
+        </section>
+
+        <section class="admin-section">
+            <h2>🔧 Debug Information</h2>
+            <p>A02: Security Misconfiguration - Debug endpoint exposed</p>
+            <button class="btn" onclick="loadDebug()">Load Debug Info</button>
+            <div id="debugInfo" class="result-box"></div>
+        </section>
+    </main>
+
+    <script>
+        async function loadUsers() {
+            const container = document.getElementById('usersTable');
+
+            try {
+                const response = await fetch('/api/admin/users');
+                const users = await response.json();
+
+                container.innerHTML = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${users.map(u => `
+                                <tr>
+                                    <td>${u.id}</td>
+                                    <td>${u.username}</td>
+                                    <td>${u.email}</td>
+                                    <td><span class="role-badge role-${u.role}">${u.role}</span></td>
+                                    <td>${u.created_at}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <p class="warning-text">⚠️ This data was retrieved without any authentication!</p>
+                `;
+            } catch (error) {
+                container.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function viewUser() {
+            const userId = document.getElementById('userIdInput').value;
+            const container = document.getElementById('userProfile');
+
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                const user = await response.json();
+
+                if (user.error) {
+                    container.className = 'result-box error';
+                    container.innerHTML = `<p>${user.error}</p>`;
+                    return;
+                }
+
+                container.className = 'result-box success';
+                container.innerHTML = `
+                    <h4>User Profile (IDOR Successful!)</h4>
+                    <table class="data-table">
+                        <tr><td>ID</td><td>${user.id}</td></tr>
+                        <tr><td>Username</td><td>${user.username}</td></tr>
+                        <tr><td>Email</td><td>${user.email}</td></tr>
+                        <tr><td>Role</td><td>${user.role}</td></tr>
+                        <tr><td>Address</td><td>${user.address}</td></tr>
+                        <tr><td>Phone</td><td>${user.phone}</td></tr>
+                        <tr><td>SSN</td><td class="sensitive">${user.ssn}</td></tr>
+                    </table>
+                    <p class="warning-text">⚠️ Sensitive data (SSN) exposed via IDOR!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        async function escalatePrivilege() {
+            const userId = document.getElementById('escUserIdInput').value;
+            const newRole = document.getElementById('newRole').value;
+            const container = document.getElementById('escalateResult');
+
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newRole })
+                });
+                const result = await response.json();
+
+                container.className = 'result-box success';
+                container.innerHTML = `
+                    <h4>✅ Privilege Escalation Successful!</h4>
+                    <p>User ${userId} role changed to: <strong>${newRole}</strong></p>
+                    <p class="warning-text">⚠️ No authorization check was performed!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        async function deleteUser() {
+            const userId = document.getElementById('deleteUserId').value;
+            const container = document.getElementById('deleteResult');
+
+            if (!confirm(`Are you sure you want to delete user ${userId}?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                container.className = 'result-box success';
+                container.innerHTML = `
+                    <h4>✅ User Deleted!</h4>
+                    <p>${result.message}</p>
+                    <p class="warning-text">⚠️ Deletion performed without any authentication!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+
+        async function loadDebug() {
+            const container = document.getElementById('debugInfo');
+
+            try {
+                const response = await fetch('/api/debug');
+                const data = await response.json();
+
+                container.className = 'result-box';
+                container.innerHTML = `
+                    <h4>🔧 Debug Information (A02: Misconfiguration)</h4>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    <p class="warning-text">⚠️ JWT Secret, Session Secret, and routes exposed!</p>
+                `;
+            } catch (error) {
+                container.className = 'result-box error';
+                container.innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

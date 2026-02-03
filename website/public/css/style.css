@@ -1,0 +1,696 @@
+/* VulnShop - Vulnerable E-Commerce Demo Styles */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    min-height: 100vh;
+    color: #fff;
+}
+
+/* Navigation */
+.navbar {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.nav-brand .logo {
+    font-size: 1.2em;
+}
+
+.warning-badge {
+    background: #f44336;
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 15px;
+    font-size: 0.5em;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.nav-links {
+    display: flex;
+    gap: 25px;
+}
+
+.nav-links a {
+    color: #aaa;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.nav-links a:hover {
+    color: #fff;
+}
+
+/* Warning Banner */
+.warning-banner {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+    font-weight: bold;
+}
+
+/* Container */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 50px 0;
+}
+
+.hero h1 {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #00d4ff, #9b59b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero p {
+    color: #888;
+    font-size: 1.2em;
+}
+
+/* Vulnerability Cards */
+.vulnerabilities-grid h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #f44336;
+}
+
+.vuln-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.vuln-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s;
+}
+
+.vuln-card:hover {
+    transform: translateY(-5px);
+    border-color: #f44336;
+    box-shadow: 0 10px 30px rgba(244, 67, 54, 0.2);
+}
+
+.vuln-rank {
+    display: inline-block;
+    background: #f44336;
+    color: #fff;
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.vuln-card h3 {
+    margin-bottom: 15px;
+    color: #fff;
+}
+
+.vuln-card ul {
+    list-style: none;
+    margin-bottom: 15px;
+}
+
+.vuln-card li {
+    padding: 5px 0;
+    color: #aaa;
+    font-size: 0.9em;
+}
+
+.vuln-card li::before {
+    content: '→ ';
+    color: #f44336;
+}
+
+.try-btn {
+    display: inline-block;
+    color: #00d4ff;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+.try-btn:hover {
+    color: #fff;
+}
+
+/* Quick Test Section */
+.quick-tests {
+    margin-top: 50px;
+}
+
+.quick-tests h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #00d4ff;
+}
+
+.test-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.test-card {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid #00d4ff;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.test-card h4 {
+    color: #00d4ff;
+    margin-bottom: 10px;
+}
+
+.test-card code {
+    display: block;
+    background: #0a0a15;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
+    color: #f44336;
+    word-break: break-all;
+}
+
+.test-card p {
+    color: #888;
+    font-size: 0.9em;
+}
+
+/* Auth Container */
+.auth-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .auth-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+.auth-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auth-box h2 {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.auth-links {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.auth-links a {
+    color: #00d4ff;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #aaa;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #0a0a15;
+    color: #fff;
+    font-size: 1em;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #00d4ff;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 0.85em;
+}
+
+.form-inline {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.form-inline input,
+.form-inline select {
+    flex: 1;
+    min-width: 150px;
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.input-group input {
+    flex: 1;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    color: #fff;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: #fff;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(244, 67, 54, 0.4);
+}
+
+/* Payload Buttons */
+.payload-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.payload-btn {
+    padding: 8px 15px;
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid #f44336;
+    border-radius: 5px;
+    color: #f44336;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.3s;
+}
+
+.payload-btn:hover {
+    background: rgba(244, 67, 54, 0.4);
+    color: #fff;
+}
+
+/* Result Box */
+.result-box {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid #333;
+}
+
+.result-box.success {
+    border-color: #4caf50;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.result-box.error {
+    border-color: #f44336;
+    background: rgba(244, 67, 54, 0.1);
+}
+
+.result-box h4 {
+    margin-bottom: 10px;
+}
+
+.result-box pre {
+    background: #0a0a15;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* SQL Display */
+.sql-display {
+    background: #0a0a15;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid #333;
+}
+
+.sql-display h4 {
+    color: #888;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.sql-display pre {
+    color: #4ecdc4;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Code Display */
+.code-display {
+    background: #0a0a15;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85em;
+}
+
+.code-display h4 {
+    color: #888;
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.code-display pre {
+    color: #f44336;
+}
+
+/* Vulnerability Info Box */
+.vuln-info-box {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid #f44336;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.vuln-info-box h3 {
+    color: #f44336;
+    margin-bottom: 15px;
+}
+
+.vuln-info-box p,
+.vuln-info-box li {
+    color: #ccc;
+    line-height: 1.6;
+}
+
+.vuln-info-box ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.vuln-info-box li::before {
+    content: '• ';
+    color: #f44336;
+}
+
+.vuln-item {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.vuln-item h4 {
+    color: #ff9800;
+    margin-bottom: 5px;
+}
+
+/* Tables */
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.data-table th {
+    background: rgba(0, 212, 255, 0.2);
+    color: #00d4ff;
+    font-weight: bold;
+}
+
+.data-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sensitive {
+    color: #f44336 !important;
+    font-weight: bold;
+}
+
+/* Role Badges */
+.role-badge {
+    padding: 3px 10px;
+    border-radius: 15px;
+    font-size: 0.85em;
+}
+
+.role-admin {
+    background: #f44336;
+    color: #fff;
+}
+
+.role-manager {
+    background: #ff9800;
+    color: #fff;
+}
+
+.role-user {
+    background: #4caf50;
+    color: #fff;
+}
+
+/* Sections */
+.admin-section,
+.banking-section,
+.tool-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-section h2,
+.banking-section h2,
+.tool-section h2 {
+    color: #00d4ff;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #00d4ff;
+}
+
+/* Search Section */
+.search-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 768px) {
+    .search-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+.search-box {
+    display: flex;
+    gap: 10px;
+}
+
+.search-box input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    background: #0a0a15;
+    color: #fff;
+    font-size: 1em;
+}
+
+.search-box button {
+    padding: 12px 25px;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* Product Grid */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.product-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    border-color: #00d4ff;
+}
+
+.product-card h3 {
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.product-card p {
+    color: #888;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.product-card .price {
+    font-size: 1.3em;
+    color: #4caf50;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+/* Error Card */
+.error-card {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid #f44336;
+    border-radius: 10px;
+    padding: 20px;
+    grid-column: 1 / -1;
+}
+
+.error-card h3 {
+    color: #f44336;
+    margin-bottom: 10px;
+}
+
+.error-card pre {
+    background: #0a0a15;
+    padding: 15px;
+    border-radius: 5px;
+    overflow-x: auto;
+    font-size: 0.85em;
+}
+
+/* Warning Text */
+.warning-text {
+    color: #ff9800;
+    font-size: 0.9em;
+    margin-top: 10px;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 30px;
+    color: #666;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 50px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .nav-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .hero h1 {
+        font-size: 1.8em;
+    }
+
+    .vuln-cards {
+        grid-template-columns: 1fr;
+    }
+}
