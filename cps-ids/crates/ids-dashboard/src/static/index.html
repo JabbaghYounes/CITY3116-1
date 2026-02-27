@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPS IDS/IPS Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* ── Reset & base ──────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Header ────────────────────────────────────────────────────── */
+        header {
+            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+            padding: 18px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #0f3460;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: #e0e0e0;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #a0a0b8;
+        }
+
+        .status-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 8px #4ade80;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #f87171;
+            box-shadow: 0 0 8px #f87171;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* ── Stats cards ───────────────────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 24px 32px 0;
+        }
+
+        .stat-card {
+            background: #16213e;
+            border-radius: 10px;
+            padding: 20px 24px;
+            border: 1px solid #0f3460;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #7a7a9a;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-card.total .value   { color: #60a5fa; }
+        .stat-card.network .value { color: #a78bfa; }
+        .stat-card.host .value    { color: #38bdf8; }
+        .stat-card.critical .value{ color: #f87171; }
+
+        /* ── Main content ──────────────────────────────────────────────── */
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 24px 32px;
+        }
+
+        @media (max-width: 960px) {
+            .content { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 10px;
+            border: 1px solid #0f3460;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .panel-header {
+            padding: 14px 20px;
+            background: #0f3460;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .panel-body {
+            padding: 16px 20px;
+        }
+
+        /* ── Alert feed ────────────────────────────────────────────────── */
+        #alert-feed {
+            max-height: 500px;
+            overflow-y: auto;
+            list-style: none;
+        }
+
+        #alert-feed::-webkit-scrollbar { width: 6px; }
+        #alert-feed::-webkit-scrollbar-track { background: #16213e; }
+        #alert-feed::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+
+        .alert-item {
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .alert-item:last-child { border-bottom: none; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .alert-time {
+            font-size: 0.75rem;
+            color: #7a7a9a;
+            font-family: 'Courier New', monospace;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-network { background: rgba(167,139,250,0.2); color: #a78bfa; }
+        .badge-host    { background: rgba(56,189,248,0.2); color: #38bdf8; }
+
+        .badge-low      { background: rgba(74,222,128,0.2); color: #4ade80; }
+        .badge-medium   { background: rgba(250,204,21,0.2); color: #facc15; }
+        .badge-high     { background: rgba(251,146,60,0.2); color: #fb923c; }
+        .badge-critical { background: rgba(248,113,113,0.2); color: #f87171; }
+
+        .badge-category {
+            background: rgba(96,165,250,0.15);
+            color: #60a5fa;
+        }
+
+        .alert-desc {
+            font-size: 0.85rem;
+            color: #c0c0d8;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #7a7a9a;
+            padding: 40px 0;
+            font-size: 0.9rem;
+        }
+
+        /* ── Chart ─────────────────────────────────────────────────────── */
+        .chart-container {
+            position: relative;
+            height: 400px;
+        }
+
+        /* ── Model table ───────────────────────────────────────────────── */
+        .models-section {
+            padding: 0 32px 32px;
+        }
+
+        .model-table-panel {
+            background: #16213e;
+            border-radius: 10px;
+            border: 1px solid #0f3460;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #7a7a9a;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        tbody tr:hover { background: rgba(15,52,96,0.3); }
+
+        .metric-good { color: #4ade80; }
+        .metric-ok   { color: #facc15; }
+        .metric-bad  { color: #f87171; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>CPS IDS/IPS Dashboard</h1>
+        <div class="status-indicator">
+            <div class="status-dot" id="ws-status"></div>
+            <span id="ws-label">Connecting...</span>
+        </div>
+    </header>
+
+    <!-- Stats cards -->
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="label">Total Alerts</div>
+            <div class="value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card network">
+            <div class="label">Network Alerts (NIDS)</div>
+            <div class="value" id="stat-network">0</div>
+        </div>
+        <div class="stat-card host">
+            <div class="label">Host Alerts (HIDS)</div>
+            <div class="value" id="stat-host">0</div>
+        </div>
+        <div class="stat-card critical">
+            <div class="label">Critical Alerts</div>
+            <div class="value" id="stat-critical">0</div>
+        </div>
+    </div>
+
+    <!-- Main two-column layout -->
+    <div class="content">
+        <!-- Left: Real-time alert feed -->
+        <div class="panel">
+            <div class="panel-header">Real-Time Alert Feed</div>
+            <div class="panel-body">
+                <ul id="alert-feed">
+                    <li class="empty-state">Waiting for alerts...</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Right: Category chart -->
+        <div class="panel">
+            <div class="panel-header">Alerts by Category</div>
+            <div class="panel-body">
+                <div class="chart-container">
+                    <canvas id="category-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Model performance table -->
+    <div class="models-section">
+        <div class="model-table-panel">
+            <div class="panel-header">Model Performance</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Type</th>
+                        <th>Accuracy</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1 Score</th>
+                    </tr>
+                </thead>
+                <tbody id="model-table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+<script>
+(function() {
+    // ── State ────────────────────────────────────────────────────────
+    const API_BASE = window.location.origin;
+    const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/alerts`;
+    let ws = null;
+    let categoryChart = null;
+    let emptyStateShown = true;
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    function severityClass(sev) {
+        return 'badge-' + (sev || 'low').toLowerCase();
+    }
+
+    function sourceClass(src) {
+        return src === 'Network' ? 'badge-network' : 'badge-host';
+    }
+
+    function metricClass(v) {
+        if (v >= 0.93) return 'metric-good';
+        if (v >= 0.87) return 'metric-ok';
+        return 'metric-bad';
+    }
+
+    function fmtTime(ts) {
+        const d = new Date(ts);
+        return d.toLocaleTimeString('en-GB', { hour12: false }) + '.' +
+               String(d.getMilliseconds()).padStart(3, '0');
+    }
+
+    // ── Alert feed ───────────────────────────────────────────────────
+    function addAlert(alert) {
+        const feed = document.getElementById('alert-feed');
+        if (emptyStateShown) {
+            feed.innerHTML = '';
+            emptyStateShown = false;
+        }
+
+        const li = document.createElement('li');
+        li.className = 'alert-item';
+
+        const sevText = alert.severity || 'Low';
+        const srcText = alert.source || 'Network';
+        const catText = alert.category || 'Unknown';
+
+        li.innerHTML = `
+            <div class="alert-meta">
+                <span class="alert-time">${fmtTime(alert.timestamp)}</span>
+                <span class="badge ${sourceClass(srcText)}">${srcText}</span>
+                <span class="badge ${severityClass(sevText)}">${sevText}</span>
+                <span class="badge badge-category">${catText}</span>
+            </div>
+            <div class="alert-desc">${escapeHtml(alert.description || 'No description')}</div>
+        `;
+        feed.prepend(li);
+
+        // Keep the feed from growing unbounded
+        while (feed.children.length > 200) {
+            feed.removeChild(feed.lastChild);
+        }
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // ── Stats ────────────────────────────────────────────────────────
+    async function fetchStats() {
+        try {
+            const res = await fetch(API_BASE + '/api/stats');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            document.getElementById('stat-total').textContent = data.total_alerts;
+            document.getElementById('stat-network').textContent = data.alerts_by_source.network;
+            document.getElementById('stat-host').textContent = data.alerts_by_source.host;
+            document.getElementById('stat-critical').textContent =
+                data.alerts_by_severity['Critical'] || 0;
+
+            updateChart(data.alerts_by_category);
+        } catch (_) { /* ignore */ }
+    }
+
+    // ── Chart ────────────────────────────────────────────────────────
+    function initChart() {
+        const ctx = document.getElementById('category-chart').getContext('2d');
+        categoryChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Normal', 'DoS', 'Probe', 'R2L', 'U2R', 'Unknown'],
+                datasets: [{
+                    label: 'Alert Count',
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        'rgba(74,222,128,0.7)',
+                        'rgba(248,113,113,0.7)',
+                        'rgba(250,204,21,0.7)',
+                        'rgba(251,146,60,0.7)',
+                        'rgba(167,139,250,0.7)',
+                        'rgba(96,165,250,0.7)'
+                    ],
+                    borderColor: [
+                        '#4ade80', '#f87171', '#facc15',
+                        '#fb923c', '#a78bfa', '#60a5fa'
+                    ],
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                },
+                scales: {
+                    x: {
+                        ticks: { color: '#7a7a9a' },
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#7a7a9a', precision: 0 },
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChart(byCategory) {
+        if (!categoryChart) return;
+        const labels = ['Normal', 'DoS', 'Probe', 'R2L', 'U2R', 'Unknown'];
+        categoryChart.data.datasets[0].data = labels.map(l => byCategory[l] || 0);
+        categoryChart.update();
+    }
+
+    // ── Models ───────────────────────────────────────────────────────
+    async function fetchModels() {
+        try {
+            const res = await fetch(API_BASE + '/api/models');
+            if (!res.ok) return;
+            const models = await res.json();
+            const tbody = document.getElementById('model-table-body');
+            tbody.innerHTML = '';
+
+            for (const m of models) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${escapeHtml(m.name)}</strong></td>
+                    <td>${escapeHtml(m.model_type)}</td>
+                    <td class="${metricClass(m.accuracy)}">${(m.accuracy * 100).toFixed(2)}%</td>
+                    <td class="${metricClass(m.precision)}">${(m.precision * 100).toFixed(2)}%</td>
+                    <td class="${metricClass(m.recall)}">${(m.recall * 100).toFixed(2)}%</td>
+                    <td class="${metricClass(m.f1_score)}">${(m.f1_score * 100).toFixed(2)}%</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        } catch (_) { /* ignore */ }
+    }
+
+    // ── WebSocket ────────────────────────────────────────────────────
+    function connectWebSocket() {
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = function() {
+            document.getElementById('ws-status').classList.remove('disconnected');
+            document.getElementById('ws-label').textContent = 'Connected';
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                const alert = JSON.parse(event.data);
+                addAlert(alert);
+                // Refresh stats after receiving a new alert
+                fetchStats();
+            } catch (_) { /* ignore malformed messages */ }
+        };
+
+        ws.onclose = function() {
+            document.getElementById('ws-status').classList.add('disconnected');
+            document.getElementById('ws-label').textContent = 'Disconnected';
+            // Reconnect after 3 seconds
+            setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = function() {
+            ws.close();
+        };
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────
+    initChart();
+    fetchStats();
+    fetchModels();
+    connectWebSocket();
+
+    // Refresh stats every 30 seconds
+    setInterval(fetchStats, 30000);
+})();
+</script>
+
+</body>
+</html>

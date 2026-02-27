@@ -1,0 +1,56 @@
+[network]
+enabled = true
+interface = "lo"
+# pcap_file = "data/test.pcap"    # uncomment to replay a PCAP instead of live capture
+
+[host]
+enabled = true
+
+[host.file_integrity]
+enabled = true
+watch_paths = ["/etc", "/usr/bin", "/home"]
+baseline_on_startup = true
+
+[host.process_monitor]
+enabled = true
+poll_interval_secs = 2
+whitelist_paths = ["/usr/bin", "/usr/sbin", "/bin", "/sbin"]
+
+[host.syscall_monitor]
+enabled = false
+audit_log_path = "/var/log/audit/audit.log"
+
+[host.log_watcher]
+enabled = true
+log_paths = ["/var/log/auth.log", "/var/log/syslog"]
+
+[preprocessing]
+normalization = "min-max"
+window_size = 1
+
+[detection]
+mode = "ids"
+confidence_threshold = 0.5
+
+[detection.ensemble_weights]
+rf = 0.35
+lstm = 0.40
+iforest = 0.25
+
+[response]
+nips_enabled = false
+hips_enabled = false
+block_duration_secs = 300
+quarantine_dir = "/var/ids/quarantine"
+siem_port = 514
+log_file = "logs/alerts.jsonl"
+
+[dashboard]
+port = 8080
+host = "127.0.0.1"
+
+[models]
+rf_path = "data/models/random_forest.json"
+lstm_path = "data/models/lstm_model"
+iforest_path = "data/models/isolation_forest.json"
+scaler_path = "data/models/scaler.json"

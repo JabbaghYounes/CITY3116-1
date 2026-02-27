@@ -1,0 +1,18 @@
+[package]
+name = "ids-collector"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ids-common = { path = "../ids-common" }
+pnet = "0.35"
+pcap-file = "2"
+notify = "7"
+sysinfo = "0.33"
+sha2 = "0.10"
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

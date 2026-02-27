@@ -1,0 +1,10 @@
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/deps/inotify-f0a859548efb65f6.d: /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/lib.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/events.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/fd_guard.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/inotify.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/util.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/watches.rs
+
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/deps/libinotify-f0a859548efb65f6.rmeta: /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/lib.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/events.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/fd_guard.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/inotify.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/util.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/watches.rs
+
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/lib.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/events.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/fd_guard.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/inotify.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/util.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/inotify-0.10.2/src/watches.rs:

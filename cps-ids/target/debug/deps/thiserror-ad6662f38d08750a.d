@@ -1,0 +1,14 @@
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/deps/thiserror-ad6662f38d08750a.d: /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/build/thiserror-454d5df47d01f3f0/out/private.rs
+
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/deps/libthiserror-ad6662f38d08750a.rlib: /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/build/thiserror-454d5df47d01f3f0/out/private.rs
+
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/deps/libthiserror-ad6662f38d08750a.rmeta: /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs /home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs /home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/build/thiserror-454d5df47d01f3f0/out/private.rs
+
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/lib.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/aserror.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/display.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/var.rs:
+/home/vt/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/thiserror-2.0.18/src/private.rs:
+/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/build/thiserror-454d5df47d01f3f0/out/private.rs:
+
+# env-dep:OUT_DIR=/home/vt/Documents/BSC/advanced-computer-forensics/CITY3116-1/cps-ids/target/debug/build/thiserror-454d5df47d01f3f0/out
