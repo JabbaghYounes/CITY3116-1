@@ -167,9 +167,9 @@ A multi-model ensemble approach is employed:
 - Class weighting to address imbalanced attack categories
 
 **Implementation Framework:**
-- Python with scikit-learn for traditional ML algorithms
-- TensorFlow/Keras for deep learning models
-- Scapy for packet capture and parsing
+- Rust with linfa for traditional ML algorithms
+- burn for deep learning models
+- pnet for packet capture and parsing
 - Integration with Snort for rule-based detection baseline
 
 ### 2.4 Evaluation and Comparison
