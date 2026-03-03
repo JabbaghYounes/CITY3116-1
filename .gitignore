@@ -1,1 +1,15 @@
 CLAUDE.md
+
+# Rust build artifacts
+cps-ids/target/
+
+# Dataset folders (too large for git)
+NSL-KDD-Dataset/
+CIC-IDS2017-Dataset/
+CIC-UNSW-NB15-Dataset/
+
+# Trained models (large JSON files)
+cps-ids/data/models/*.json
+
+# OS files
+.DS_Store

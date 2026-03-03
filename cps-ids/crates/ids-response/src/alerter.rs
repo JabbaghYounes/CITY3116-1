@@ -104,6 +104,7 @@ pub fn severity_downgrade(s: Severity) -> Severity {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ids_common::types::AlertSource;
     use std::net::{IpAddr, Ipv4Addr};
 
     fn make_network_result(cat: AttackCategory, confidence: f64) -> DetectionResult {

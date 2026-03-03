@@ -120,7 +120,7 @@ fn attack_category(label: &str) -> usize {
 }
 
 /// Canonical label names in class-index order.
-fn label_names() -> Vec<String> {
+pub fn label_names() -> Vec<String> {
     vec![
         "Normal".to_string(),
         "DoS".to_string(),

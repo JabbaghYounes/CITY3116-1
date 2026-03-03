@@ -13,3 +13,9 @@ serde_json = { workspace = true }
 rand = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+tracing-subscriber = { workspace = true }
+
+[[bin]]
+name = "train_models"
+path = "src/bin/train_models.rs"
