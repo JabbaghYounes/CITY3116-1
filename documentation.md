@@ -147,3 +147,126 @@ All three datasets are mapped to a unified 5-class scheme to enable cross-datase
 | 2: Probe | satan, ipsweep, nmap, etc. | PortScan | 1 (Analysis), 5 (Fuzzers), 7 (Recon) |
 | 3: R2L | guess_passwd, ftp_write, etc. | FTP/SSH-Patator, Bot, Heartbleed, Web Attack* | 4 (Exploits), 9 (Worms) |
 | 4: U2R | buffer_overflow, rootkit, etc. | Infiltration | 2 (Backdoor), 8 (Shellcode) |
+
+## Phase 2: Model A Training — NSL-KDD (2026-03-04)
+
+### Pre-Training Fixes
+
+Three issues were discovered and fixed when running the training pipeline against the actual dataset files:
+
+1. **Tab-delimited format** — The NSL-KDD files (`KDDTrain+.txt`, `KDDTest+.txt`) use tab separators, not commas. Fixed by adding `.delimiter(b'\t')` to the CSV reader in `dataset.rs:read_csv()`.
+
+2. **42-field test file** — The test file has 42 fields (41 features + label) while the train file has 43 (41 features + label + difficulty). Relaxed the field count check from `< 43` to `< 42` to accept both formats.
+
+3. **Binary test labels** — The test file uses generic binary labels ("Normal" / "Attack") instead of specific attack names (neptune, smurf, etc.). Added `"attack" => 1` (DoS) mapping to `attack_category()`. This means multiclass evaluation on the test set is limited — Probe, R2L, and U2R classes have zero test samples.
+
+**Files modified**: `cps-ids/crates/ids-preprocess/src/dataset.rs`
+
+### Training Run
+
+- **Dataset**: NSL-KDD (125,973 train records, 22,544 test records)
+- **Features**: 122 (38 numeric + 84 one-hot from 3 categorical columns: protocol=3, service=70, flag=11)
+- **Train/Val split**: 82% / 18% (103,298 / 22,675)
+- **SMOTE**: Enabled, target=55,368 per class → 276,840 total training samples
+- **Duration**: ~34 minutes total (SMOTE ~6 min, RF training ~10 min, evaluation ~19 min)
+- **Output**: `cps-ids/data/models/model-a/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
+
+### Results
+
+#### Random Forest (5-class)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.6639 | 0.9699 | 0.7882 |
+| DoS | 0.9885 | 0.4475 | 0.6161 |
+| Probe | 0.0000 | 0.0000 | 0.0000 |
+| R2L | 0.0000 | 0.0000 | 0.0000 |
+| U2R | 0.0000 | 0.0000 | 0.0000 |
+
+Accuracy: 0.6726 | Macro-F1: 0.2809 | FPR: 0.0301
+
+#### Isolation Forest (binary: Normal vs Attack)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.6581 | 0.9815 | 0.7879 |
+| Attack | 0.9777 | 0.6141 | 0.7544 |
+
+Accuracy: 0.7724 | Macro-F1: 0.7711 | FPR: 0.0185
+
+#### Ensemble (RF + IForest)
+
+Accuracy: 0.6726 | Macro-F1: 0.2809 (identical to RF alone)
+
+### Analysis
+
+- **Probe/R2L/U2R show 0.00 metrics** because the test file only contains binary labels ("Normal"/"Attack"). All attack samples are mapped to DoS (class 1), so no test samples exist for classes 2–4. The model itself is trained on all 5 classes from the properly-labelled training data.
+
+- **Isolation Forest is the most meaningful evaluation** here (77.2% accuracy, 0.77 macro-F1) since it evaluates binary Normal-vs-Attack, matching the test set's actual label granularity. Low FPR (1.85%) indicates good specificity.
+
+- **Ensemble is identical to RF** because `predict_proba()` returns a one-hot approximation (hard prediction + 0.01 smoothing). The IForest anomaly boost cannot override a confident RF hard prediction. This is a known limitation of the current architecture.
+
+- **RF shows high precision on attacks (0.99)** but lower recall (0.45), meaning it correctly identifies attacks it finds but misses ~55% of attack traffic — many attacks are predicted as Normal. The high Normal recall (0.97) means very few false alarms.
+
+## Phase 3: Model B Training — CIC-IDS2017 (2026-03-04)
+
+### Training Run
+
+- **Dataset**: CIC-IDS2017 (2,830,743 total records across 8 daily CSV files, 78 numeric features)
+- **Train/Val/Test split**: 70% / 12% / 18% (1,981,520 / 339,689 / 509,534)
+- **SMOTE**: Disabled (`--no-smote`) due to dataset size — SMOTE on ~2M samples would be prohibitively slow
+- **Duration**: ~9 hours total (data loading ~20s, RF training ~8.5h, IForest + evaluation ~30 min, model save ~16s)
+- **Output**: `cps-ids/data/models/model-b/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
+
+### Results
+
+#### Random Forest (5-class)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.9973 | 0.9994 | 0.9983 |
+| DoS | 0.9983 | 0.9959 | 0.9971 |
+| Probe | 0.9945 | 0.9994 | 0.9969 |
+| R2L | 0.9979 | 0.7424 | 0.8514 |
+| U2R | 1.0000 | 0.8571 | 0.9231 |
+
+Accuracy: 0.9973 | Macro-F1: 0.9534 | FPR: 0.0006
+
+#### Isolation Forest (binary: Normal vs Attack)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.8453 | 0.9400 | 0.8901 |
+| Attack | 0.5507 | 0.2993 | 0.3878 |
+
+Accuracy: 0.8137 | Macro-F1: 0.6390 | FPR: 0.0600
+
+#### Ensemble (RF + IForest)
+
+Accuracy: 0.9973 | Macro-F1: 0.9534 (identical to RF alone)
+
+### Analysis
+
+- **RF achieves near-perfect multiclass detection** (99.73% accuracy, 0.95 macro-F1). Normal, DoS, and Probe classes all exceed 0.99 F1. This validates the CIC-IDS2017 dataset as well-suited for Random Forest classification with modern flow-level features.
+
+- **R2L is the weakest class** (F1: 0.8514, recall: 0.7424) — 818 of 3,176 R2L test samples were misclassified as Normal. This is expected: R2L attacks (brute-force, bots, web attacks) often resemble legitimate traffic at the flow level. U2R (Infiltration) has perfect precision but only 7 test samples total.
+
+- **Isolation Forest underperforms on this dataset** (81.4% accuracy, 0.39 attack F1). It misses 70% of attacks (recall 0.30). This is because the IForest is trained only on normal samples and the CIC-IDS2017 normal traffic is highly diverse (529K Monday benign flows across many protocols), making it harder to establish a tight normal boundary.
+
+- **Ensemble remains identical to RF** due to the one-hot `predict_proba` limitation — same issue as Model A.
+
+- **Training time (~9 hours)** was dominated by smartcore's single-threaded RF implementation on 1.98M samples. The data loading phase (8 CSV files, 2.83M rows) completed in only ~20 seconds, demonstrating the efficiency of the CIC-IDS2017 loader.
+
+### Comparison: Model A vs Model B
+
+| Metric | Model A (NSL-KDD) | Model B (CIC-IDS2017) |
+|--------|-------------------|----------------------|
+| RF Accuracy | 0.6726* | 0.9973 |
+| RF Macro-F1 | 0.2809* | 0.9534 |
+| IForest Accuracy | 0.7724 | 0.8137 |
+| IForest Macro-F1 | 0.7711 | 0.6390 |
+| FPR | 0.0301 | 0.0006 |
+| Train samples | 276,840 | 1,981,520 |
+| Features | 122 | 78 |
+
+*Model A metrics are artificially low due to binary-only test labels — not a fair comparison. The IForest binary evaluation is more comparable: Model A (0.77 F1) vs Model B (0.64 F1), suggesting the NSL-KDD normal boundary is tighter and easier for anomaly detection.

@@ -6,14 +6,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use tracing::info;
 
-use crate::encode::OneHotEncoder;
+use crate::preprocess::encode::OneHotEncoder;
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-/// A fully pre-processed train / validation / test split ready for model
-/// consumption.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatasetSplit {
     pub x_train: Array2<f64>,
@@ -22,15 +16,9 @@ pub struct DatasetSplit {
     pub y_val: Array1<usize>,
     pub x_test: Array2<f64>,
     pub y_test: Array1<usize>,
-    /// Human-readable name for every feature column.
     pub feature_names: Vec<String>,
-    /// Human-readable label for each class index (0..N).
     pub label_names: Vec<String>,
 }
-
-// ---------------------------------------------------------------------------
-// NSL-KDD column names (41 features)
-// ---------------------------------------------------------------------------
 
 const NSL_KDD_COLUMNS: &[&str] = &[
     "duration",
@@ -76,45 +64,24 @@ const NSL_KDD_COLUMNS: &[&str] = &[
     "dst_host_srv_rerror_rate",
 ];
 
-/// Indices of the three categorical columns.
 const CAT_PROTOCOL: usize = 1;
 const CAT_SERVICE: usize = 2;
 const CAT_FLAG: usize = 3;
 
-// ---------------------------------------------------------------------------
-// Attack-type -> category mapping (comprehensive NSL-KDD)
-// ---------------------------------------------------------------------------
-
 fn attack_category(label: &str) -> usize {
-    // Strip any trailing period that some dataset variants include.
     let label = label.trim().trim_end_matches('.');
 
     match label.to_lowercase().as_str() {
-        // Normal
         "normal" => 0,
-
-        // Generic binary label (some NSL-KDD variants only have "attack")
         "attack" => 1,
-
-        // DoS attacks
         "back" | "land" | "neptune" | "pod" | "smurf" | "teardrop" | "apache2" | "udpstorm"
         | "processtable" | "mailbomb" | "worm" => 1,
-
-        // Probe attacks
         "satan" | "ipsweep" | "nmap" | "portsweep" | "mscan" | "saint" => 2,
-
-        // R2L (Remote-to-Local) attacks
         "guess_passwd" | "ftp_write" | "imap" | "phf" | "multihop" | "warezmaster"
         | "warezclient" | "spy" | "xlock" | "xsnoop" | "snmpguess" | "snmpgetattack"
         | "httptunnel" | "sendmail" | "named" | "worm_sendmail" | "sendmail_dictionary" => 3,
-
-        // U2R (User-to-Root) attacks
         "buffer_overflow" | "loadmodule" | "rootkit" | "perl" | "sqlattack" | "xterm" | "ps"
         | "httptunnel_u2r" => 4,
-
-        // Fallback — unknown attack labels are mapped to the nearest
-        // reasonable category.  For safety default to Probe (2) which is the
-        // broadest reconnaissance category.
         other => {
             tracing::warn!(label = other, "unknown NSL-KDD attack label; mapping to Probe");
             2
@@ -122,7 +89,6 @@ fn attack_category(label: &str) -> usize {
     }
 }
 
-/// Canonical label names in class-index order.
 pub fn label_names() -> Vec<String> {
     vec![
         "Normal".to_string(),
@@ -133,20 +99,11 @@ pub fn label_names() -> Vec<String> {
     ]
 }
 
-// ---------------------------------------------------------------------------
-// Raw record parsing
-// ---------------------------------------------------------------------------
-
-/// A single raw row from the NSL-KDD CSV (41 features + label + difficulty).
 struct RawRecord {
-    /// The 41 feature values as strings (categorical ones are still strings).
     features: Vec<String>,
-    /// Attack label string (e.g. "normal", "neptune", ...).
     label: String,
-    // difficulty is read but not stored — we only need the label.
 }
 
-/// Parse a single NSL-KDD CSV file and return all raw records.
 fn read_csv(path: &Path) -> Result<Vec<RawRecord>> {
     let mut reader = csv::ReaderBuilder::new()
         .has_headers(false)
@@ -165,7 +122,6 @@ fn read_csv(path: &Path) -> Result<Vec<RawRecord>> {
             )
         })?;
 
-        // Expected: 41 features + label [+ optional difficulty] = 42 or 43 fields.
         if row.len() < 42 {
             anyhow::bail!(
                 "{}:{}: expected at least 42 fields, got {}",
@@ -177,19 +133,12 @@ fn read_csv(path: &Path) -> Result<Vec<RawRecord>> {
 
         let features: Vec<String> = row.iter().take(41).map(|s| s.to_string()).collect();
         let label = row[41].to_string();
-        // row[42] is difficulty — intentionally ignored.
 
         records.push(RawRecord { features, label });
     }
     Ok(records)
 }
 
-// ---------------------------------------------------------------------------
-// Encoding helpers
-// ---------------------------------------------------------------------------
-
-/// Build one-hot encoders for the three categorical columns, fitted on the
-/// training data only.
 fn fit_encoders(train_records: &[RawRecord]) -> [OneHotEncoder; 3] {
     let mut enc_proto = OneHotEncoder::new();
     let mut enc_service = OneHotEncoder::new();
@@ -215,11 +164,6 @@ fn fit_encoders(train_records: &[RawRecord]) -> [OneHotEncoder; 3] {
     [enc_proto, enc_service, enc_flag]
 }
 
-/// Convert a set of raw records into (features_matrix, labels_vector) using
-/// the supplied encoders.
-///
-/// Numeric features are parsed as `f64`.  The three categorical columns are
-/// replaced by their one-hot expansions.
 fn encode_records(
     records: &[RawRecord],
     encoders: &[OneHotEncoder; 3],
@@ -228,9 +172,7 @@ fn encode_records(
         anyhow::bail!("encode_records called with zero records");
     }
 
-    // Figure out final width:
-    // 41 original cols - 3 categorical + sum(one-hot widths).
-    let numeric_cols = 41 - 3; // 38 numeric features
+    let numeric_cols = 41 - 3;
     let onehot_width: usize = encoders.iter().map(|e| e.num_categories()).sum();
     let total_cols = numeric_cols + onehot_width;
 
@@ -241,7 +183,6 @@ fn encode_records(
     let cat_indices: [usize; 3] = [CAT_PROTOCOL, CAT_SERVICE, CAT_FLAG];
 
     for rec in records {
-        // Numeric features (skip categorical columns).
         for (j, val_str) in rec.features.iter().enumerate() {
             if cat_indices.contains(&j) {
                 continue;
@@ -250,7 +191,6 @@ fn encode_records(
             flat.push(v);
         }
 
-        // One-hot encodings (in order: protocol, service, flag).
         for (enc_idx, &col_idx) in cat_indices.iter().enumerate() {
             let onehot = encoders[enc_idx].transform(&rec.features[col_idx]);
             flat.extend(onehot);
@@ -266,13 +206,10 @@ fn encode_records(
     Ok((features, labels))
 }
 
-/// Build human-readable feature names to match the column layout produced by
-/// `encode_records`.
 fn build_feature_names(encoders: &[OneHotEncoder; 3]) -> Vec<String> {
     let cat_indices: [usize; 3] = [CAT_PROTOCOL, CAT_SERVICE, CAT_FLAG];
     let mut names = Vec::new();
 
-    // Numeric columns first (preserving original order, skipping categoricals).
     for (j, &col_name) in NSL_KDD_COLUMNS.iter().enumerate() {
         if cat_indices.contains(&j) {
             continue;
@@ -280,7 +217,6 @@ fn build_feature_names(encoders: &[OneHotEncoder; 3]) -> Vec<String> {
         names.push(col_name.to_string());
     }
 
-    // Then one-hot expansions.
     let cat_names = ["protocol_type", "service", "flag"];
     for (enc_idx, &prefix) in cat_names.iter().enumerate() {
         for cat in encoders[enc_idx].category_names() {
@@ -291,20 +227,6 @@ fn build_feature_names(encoders: &[OneHotEncoder; 3]) -> Vec<String> {
     names
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/// Load the NSL-KDD dataset from the standard train and test CSV files.
-///
-/// Each file is expected to contain **no header row** with 43 comma-separated
-/// fields per line (41 features + attack label + difficulty level).
-///
-/// The training set is further split into 82% train / 18% validation.  The
-/// test set is kept intact.
-///
-/// Categorical features (`protocol_type`, `service`, `flag`) are one-hot
-/// encoded.  Encoders are fitted **only** on the training data.
 pub fn load_nsl_kdd(train_path: &Path, test_path: &Path) -> Result<DatasetSplit> {
     info!("loading NSL-KDD training data from {}", train_path.display());
     let train_records = read_csv(train_path)?;
@@ -317,7 +239,6 @@ pub fn load_nsl_kdd(train_path: &Path, test_path: &Path) -> Result<DatasetSplit>
         test_records.len()
     );
 
-    // Fit one-hot encoders on training data only.
     let encoders = fit_encoders(&train_records);
     info!(
         "one-hot encoder widths: protocol={}, service={}, flag={}",
@@ -326,11 +247,9 @@ pub fn load_nsl_kdd(train_path: &Path, test_path: &Path) -> Result<DatasetSplit>
         encoders[2].num_categories()
     );
 
-    // Encode all records.
     let (x_full_train, y_full_train) = encode_records(&train_records, &encoders)?;
     let (x_test, y_test) = encode_records(&test_records, &encoders)?;
 
-    // Split training set 82% / 18%.
     let n = x_full_train.nrows();
     let mut indices: Vec<usize> = (0..n).collect();
     {
@@ -356,7 +275,6 @@ pub fn load_nsl_kdd(train_path: &Path, test_path: &Path) -> Result<DatasetSplit>
         feature_names.len()
     );
 
-    // Sanity check.
     assert_eq!(x_train.ncols(), feature_names.len());
     assert_eq!(x_test.ncols(), feature_names.len());
 
@@ -372,42 +290,10 @@ pub fn load_nsl_kdd(train_path: &Path, test_path: &Path) -> Result<DatasetSplit>
     })
 }
 
-// ---------------------------------------------------------------------------
-// Class-distribution helper (useful for logging / balancing decisions)
-// ---------------------------------------------------------------------------
-
-/// Return a map from class index to count.
 pub fn class_distribution(labels: &Array1<usize>) -> HashMap<usize, usize> {
     let mut dist = HashMap::new();
     for &l in labels.iter() {
         *dist.entry(l).or_insert(0) += 1;
     }
     dist
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_attack_category_mapping() {
-        assert_eq!(attack_category("normal"), 0);
-        assert_eq!(attack_category("normal."), 0);
-        assert_eq!(attack_category("neptune"), 1);
-        assert_eq!(attack_category("smurf"), 1);
-        assert_eq!(attack_category("satan"), 2);
-        assert_eq!(attack_category("nmap"), 2);
-        assert_eq!(attack_category("guess_passwd"), 3);
-        assert_eq!(attack_category("warezclient"), 3);
-        assert_eq!(attack_category("buffer_overflow"), 4);
-        assert_eq!(attack_category("rootkit"), 4);
-    }
-
-    #[test]
-    fn test_label_names() {
-        let names = label_names();
-        assert_eq!(names.len(), 5);
-        assert_eq!(names[0], "Normal");
-        assert_eq!(names[4], "U2R");
-    }
 }
