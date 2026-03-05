@@ -90,13 +90,22 @@ if command -v nvidia-smi &>/dev/null; then
 fi
 
 # --- Download libtorch ---
-# Download latest stable libtorch; bypass tch version check
-LIBTORCH_VERSION="2.7.0"
-export LIBTORCH_BYPASS_VERSION_CHECK=1
+# tch 0.17 requires exactly libtorch 2.4.0 (C++ ABI must match)
+LIBTORCH_VERSION="2.4.0"
 
-if [ -d "$LIBTORCH_DIR" ] && [ -f "$LIBTORCH_DIR/lib/libtorch_cpu.so" -o -f "$LIBTORCH_DIR/lib/libtorch_cpu.dylib" ]; then
-    info "libtorch already exists at $LIBTORCH_DIR"
+# Check if existing libtorch matches required version; re-download if not
+EXISTING_VERSION=""
+if [ -f "$LIBTORCH_DIR/build-version" ]; then
+    EXISTING_VERSION=$(cat "$LIBTORCH_DIR/build-version" | tr -d '[:space:]')
+fi
+
+if [ -d "$LIBTORCH_DIR" ] && [ "$EXISTING_VERSION" = "$LIBTORCH_VERSION" ] && [ -f "$LIBTORCH_DIR/lib/libtorch_cpu.so" -o -f "$LIBTORCH_DIR/lib/libtorch_cpu.dylib" ]; then
+    info "libtorch $LIBTORCH_VERSION already exists at $LIBTORCH_DIR"
 else
+    if [ -d "$LIBTORCH_DIR" ]; then
+        warn "Removing old libtorch (version: ${EXISTING_VERSION:-unknown}, need: $LIBTORCH_VERSION)"
+        rm -rf "$LIBTORCH_DIR"
+    fi
     info "Downloading libtorch $LIBTORCH_VERSION..."
 
     if [ "$HAS_CUDA" = true ]; then
@@ -137,7 +146,6 @@ cat > "$ENV_FILE" <<ENVEOF
 #!/usr/bin/env bash
 export LIBTORCH="$LIBTORCH_DIR"
 export LD_LIBRARY_PATH="${LIBTORCH_DIR}/lib:\${LD_LIBRARY_PATH:-}"
-export LIBTORCH_BYPASS_VERSION_CHECK=1
 ENVEOF
 chmod +x "$ENV_FILE"
 
