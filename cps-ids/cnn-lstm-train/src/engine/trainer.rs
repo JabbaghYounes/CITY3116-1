@@ -64,8 +64,12 @@ pub fn labels_to_tensor(labels: &Array1<usize>, device: Device) -> Tensor {
 
 /// Convert logits tensor to ndarray Array1<usize> predictions (argmax).
 pub fn tensor_to_predictions(logits: &Tensor) -> Array1<usize> {
-    let preds: Vec<i64> = logits.argmax(1, false).to_kind(Kind::Int64).into();
-    Array1::from(preds.into_iter().map(|v| v as usize).collect::<Vec<_>>())
+    let pred_tensor = logits.argmax(1, false).to_kind(Kind::Int64);
+    let n = pred_tensor.size()[0] as usize;
+    let preds: Vec<usize> = (0..n)
+        .map(|i| i64::try_from(&pred_tensor.get(i as i64)).unwrap_or(0) as usize)
+        .collect();
+    Array1::from(preds)
 }
 
 // ---------------------------------------------------------------------------

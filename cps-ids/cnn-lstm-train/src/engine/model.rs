@@ -11,7 +11,7 @@
 //!     → Linear(128, 64) + ReLU + Dropout(0.3)
 //!     → Linear(64, n_classes)
 
-use tch::{nn, nn::Module, Tensor};
+use tch::{nn, nn::RNN, Tensor};
 
 pub struct CnnLstmConfig {
     pub n_features: i64,

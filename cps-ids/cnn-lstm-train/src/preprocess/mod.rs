@@ -6,7 +6,8 @@ pub mod cicids;
 pub mod unsw;
 pub mod combined;
 
-pub use dataset::{load_nsl_kdd, label_names, DatasetSplit};
+pub use dataset::{load_nsl_kdd, DatasetSplit};
+#[allow(unused_imports)]
 pub use encode::OneHotEncoder;
 pub use normalize::MinMaxScaler;
 pub use smote::smote;
