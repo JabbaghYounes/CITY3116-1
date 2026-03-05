@@ -90,8 +90,9 @@ if command -v nvidia-smi &>/dev/null; then
 fi
 
 # --- Download libtorch ---
-# tch 0.17 requires libtorch 2.4.0
-LIBTORCH_VERSION="2.4.0"
+# Download latest stable libtorch; bypass tch version check
+LIBTORCH_VERSION="2.7.0"
+export LIBTORCH_BYPASS_VERSION_CHECK=1
 
 if [ -d "$LIBTORCH_DIR" ] && [ -f "$LIBTORCH_DIR/lib/libtorch_cpu.so" -o -f "$LIBTORCH_DIR/lib/libtorch_cpu.dylib" ]; then
     info "libtorch already exists at $LIBTORCH_DIR"
@@ -112,7 +113,7 @@ else
     curl -L -o "$LIBTORCH_ZIP" "$LIBTORCH_URL" || {
         warn "Download failed for libtorch $LIBTORCH_VERSION."
         warn "Trying latest CPU libtorch..."
-        LIBTORCH_URL="https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-2.4.0%2Bcpu.zip"
+        LIBTORCH_URL="https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip"
         curl -L -o "$LIBTORCH_ZIP" "$LIBTORCH_URL" || error "Failed to download libtorch. Check your internet connection."
     }
 
@@ -136,6 +137,7 @@ cat > "$ENV_FILE" <<ENVEOF
 #!/usr/bin/env bash
 export LIBTORCH="$LIBTORCH_DIR"
 export LD_LIBRARY_PATH="${LIBTORCH_DIR}/lib:\${LD_LIBRARY_PATH:-}"
+export LIBTORCH_BYPASS_VERSION_CHECK=1
 ENVEOF
 chmod +x "$ENV_FILE"
 
