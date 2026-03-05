@@ -3,6 +3,11 @@ CLAUDE.md
 # Rust build artifacts
 cps-ids/target/
 cps-ids/parallel-train/target/
+cps-ids/cnn-lstm-train/target/
+
+# CNN+LSTM libtorch (large download, ~2GB)
+cps-ids/cnn-lstm-train/libtorch/
+cps-ids/cnn-lstm-train/env.sh
 
 # Dataset folders (too large for git)
 NSL-KDD-Dataset/

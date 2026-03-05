@@ -270,3 +270,99 @@ Accuracy: 0.9973 | Macro-F1: 0.9534 (identical to RF alone)
 | Features | 122 | 78 |
 
 *Model A metrics are artificially low due to binary-only test labels — not a fair comparison. The IForest binary evaluation is more comparable: Model A (0.77 F1) vs Model B (0.64 F1), suggesting the NSL-KDD normal boundary is tighter and easier for anomaly detection.
+
+## Phase 5: CNN+LSTM Training Crate (2026-03-05)
+
+### Motivation
+
+To compare traditional ML (Random Forest + Isolation Forest) with deep learning for IDS, a standalone CNN+LSTM training crate was created at `cps-ids/cnn-lstm-train/`. This uses the same 4 models (A–D), same datasets, and same 5-class scheme — enabling direct comparison.
+
+### Architecture
+
+CNN+LSTM for tabular data. Input is reshaped from flat features into a pseudo-sequential format for Conv1d processing:
+
+```
+Input: (batch, n_features)
+  → reshape to (batch, 1, n_features)
+  → Conv1d(1, 64, kernel=3, pad=1) + ReLU + BatchNorm1d
+  → Conv1d(64, 128, kernel=3, pad=1) + ReLU + BatchNorm1d
+  → permute to (batch, n_features, 128)
+  → LSTM(input=128, hidden=128, layers=2, dropout=0.3, batch_first=true)
+  → last-layer hidden state → (batch, 128)
+  → Linear(128, 64) + ReLU + Dropout(0.3)
+  → Linear(64, 5)  → raw logits → CrossEntropyLoss
+```
+
+~297K trainable parameters. Sequence length varies by dataset (76/78/122/276 features) but LSTM handles this naturally since its parameters depend only on input_size and hidden_size, not sequence length.
+
+### Technology
+
+- **Framework**: tch-rs v0.17 (Rust bindings to PyTorch's libtorch C++ library)
+- **Performance**: Same as Python PyTorch — both call the same libtorch C++ kernels
+- **Device**: Auto-detects GPU (`Device::cuda_if_available()`), falls back to CPU
+- **Optimizer**: Adam, lr=1e-3
+- **Training features**: Mini-batch shuffling, early stopping (patience=5), ReduceLROnPlateau LR scheduling, best-weight checkpointing
+
+### Implementation
+
+Created `cps-ids/cnn-lstm-train/` as a standalone crate (`[workspace]` opt-out from parent workspace):
+
+| File | Purpose |
+|------|---------|
+| `Cargo.toml` | Dependencies: tch, rayon, ndarray, clap, tracing, serde |
+| `setup.sh` | Downloads libtorch (CPU or CUDA auto-detect), installs Rust, builds binary |
+| `src/preprocess/*` | 7 files copied from parallel-train (dataset loaders, normalization, SMOTE) |
+| `src/engine/model.rs` | CnnLstm network definition (Conv1d + BatchNorm + LSTM + FC) |
+| `src/engine/trainer.rs` | Training loop, tensor conversion helpers, batched inference |
+| `src/engine/train.rs` | Orchestrator: load → normalize → SMOTE → tensor conversion → train → evaluate → save |
+| `src/engine/evaluate.rs` | Classification metrics (copied from parallel-train) |
+| `src/main.rs` | CLI with clap: dataset args + DL hyperparams (batch_size, epochs, lr, patience, lstm_hidden, lstm_layers, dropout) |
+
+### Key Design Decisions
+
+1. **Standalone crate** rather than adding to workspace — libtorch dependency is ~2GB and shouldn't be required for the existing RF+IForest tools
+2. **Reused preprocess modules** — identical data loading and normalization ensures fair comparison
+3. **Model saved as .pt** (VarStore::save) — instant save/load, no retraining needed (unlike smartcore RF)
+4. **All hyperparameters configurable via CLI** — batch_size, epochs, learning_rate, patience, lstm_hidden, lstm_layers, dropout
+
+### Verification
+
+- All Rust source code compiles cleanly (torch-sys requires libtorch at link time, handled by setup.sh)
+- Existing workspace: all 60 tests pass, cnn-lstm-train crate is fully isolated
+- `.gitignore` updated: `cps-ids/cnn-lstm-train/target/`, `libtorch/`, `env.sh`
+
+### CLI Usage
+
+```bash
+# Setup (downloads libtorch, builds binary)
+cd cps-ids/cnn-lstm-train && chmod +x setup.sh && ./setup.sh
+
+# Source environment before running
+source env.sh
+
+# Model A: NSL-KDD
+./target/release/train-cnn-lstm --dataset nsl-kdd \
+    --nsl-train ../../NSL-KDD-Dataset/KDDTrain+.txt \
+    --nsl-test ../../NSL-KDD-Dataset/KDDTest+.txt \
+    --output-dir data/models/model-a
+
+# Model B: CIC-IDS2017
+./target/release/train-cnn-lstm --dataset cicids2017 \
+    --cicids-dir ../../CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/ \
+    --output-dir data/models/model-b --no-smote
+
+# Model C: UNSW-NB15
+./target/release/train-cnn-lstm --dataset unsw-nb15 \
+    --unsw-data ../../CIC-UNSW-NB15-Dataset/Data.csv \
+    --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
+    --output-dir data/models/model-c
+
+# Model D: All three combined
+./target/release/train-cnn-lstm --dataset combined \
+    --nsl-train ../../NSL-KDD-Dataset/KDDTrain+.txt \
+    --nsl-test ../../NSL-KDD-Dataset/KDDTest+.txt \
+    --cicids-dir ../../CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/ \
+    --unsw-data ../../CIC-UNSW-NB15-Dataset/Data.csv \
+    --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
+    --output-dir data/models/model-d --no-smote
+```
