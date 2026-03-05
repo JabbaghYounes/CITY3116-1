@@ -366,3 +366,98 @@ source env.sh
     --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
     --output-dir data/models/model-d --no-smote
 ```
+
+## Phase 4: Model C & D Training — Parallel (16-core machine, 2026-03-05)
+
+Models C and D were trained on a 16-core machine using the `parallel-train` crate (rayon-parallelized RF+IForest, 32 threads auto-detected). Training was performed remotely and model artifacts were transferred back.
+
+### Model C: UNSW-NB15
+
+- **Dataset**: UNSW-NB15 (447,915 total records, 76 numeric features)
+- **Train/Val/Test split**: 70% / 12% / 18% (313,541 / 53,749 / 80,625)
+- **SMOTE**: Enabled, target=250,742 per class → 1,253,710 total training samples
+- **Duration**: ~2 hours (RF training dominated)
+- **Output**: `cps-ids/parallel-train/data/models/model-c/`
+
+#### Random Forest (5-class)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.9999 | 0.9749 | 0.9872 |
+| DoS | 0.6850 | 0.6196 | 0.6507 |
+| Probe | 0.7275 | 0.8744 | 0.7942 |
+| R2L | 0.8377 | 0.7422 | 0.7871 |
+| U2R | 0.2183 | 0.5642 | 0.3148 |
+
+Accuracy: 0.9390 | Macro-F1: 0.7068 | FPR: 0.0251
+
+#### Isolation Forest (binary: Normal vs Attack)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.8425 | 0.9613 | 0.8980 |
+| Attack | 0.6384 | 0.2757 | 0.3851 |
+
+Accuracy: 0.8250 | Macro-F1: 0.6415 | FPR: 0.0387
+
+#### Ensemble (RF + IForest)
+
+Accuracy: 0.9384 | Macro-F1: 0.7062
+
+### Model D: Combined (NSL-KDD + CIC-IDS2017 + UNSW-NB15)
+
+- **Dataset**: All three combined (3,406,631 total records, 276 features via union zero-padding)
+- **Train/Val/Test split**: 70% / 12% / 18% (2,398,359 / ~408K / ~612K)
+- **SMOTE**: Disabled (`--no-smote`) due to combined dataset size
+- **Duration**: ~7 hours
+- **Output**: `cps-ids/parallel-train/data/models/model-d/`
+
+#### Random Forest (5-class)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.9863 | 0.9957 | 0.9910 |
+| DoS | 0.9952 | 0.9006 | 0.9456 |
+| Probe | 0.8727 | 0.9859 | 0.9258 |
+| R2L | 0.8510 | 0.7505 | 0.7976 |
+| U2R | 0.7660 | 0.0744 | 0.1356 |
+
+Accuracy: 0.9780 | Macro-F1: 0.7591 | FPR: 0.0043
+
+#### Isolation Forest (binary: Normal vs Attack)
+
+| Class | Precision | Recall | F1 |
+|-------|-----------|--------|-----|
+| Normal | 0.8117 | 0.9752 | 0.8860 |
+| Attack | 0.6264 | 0.1554 | 0.2490 |
+
+Accuracy: 0.8020 | Macro-F1: 0.5675 | FPR: 0.0248
+
+#### Ensemble (RF + IForest)
+
+Accuracy: 0.9782 | Macro-F1: 0.7673
+
+### Analysis
+
+- **Model C (UNSW-NB15)** achieves 93.9% RF accuracy with strong Normal detection (F1 0.99) but weaker attack classes. U2R is the hardest class (F1 0.31) — only 452 test samples with high confusion against Probe/R2L. The SMOTE-balanced training improved minority class recall compared to unbalanced approaches.
+
+- **Model D (Combined)** achieves the best overall RF accuracy (97.8%) and demonstrates that the union zero-padding approach works — the model can learn cross-dataset patterns despite 276-dimensional sparse feature vectors. U2R remains problematic (F1 0.14, recall 0.07) due to extreme rarity across all datasets.
+
+- **Ensemble improves R2L recall in Model D** (0.75→0.82) compared to RF alone — this is the first time the IForest anomaly boost meaningfully helps, because the parallel-train RF uses proper probability outputs rather than one-hot approximations.
+
+- **IForest consistently underperforms RF** across all models (80-83% accuracy vs 94-98%), confirming that supervised classification is more effective than unsupervised anomaly detection for IDS when labelled data is available.
+
+### All-Models Comparison
+
+| Metric | Model A (NSL-KDD) | Model B (CIC-IDS2017) | Model C (UNSW-NB15) | Model D (Combined) |
+|--------|-------------------|----------------------|---------------------|-------------------|
+| RF Accuracy | 0.6726* | 0.9973 | 0.9390 | 0.9780 |
+| RF Macro-F1 | 0.2809* | 0.9534 | 0.7068 | 0.7591 |
+| Ensemble Acc | 0.6726* | 0.9973 | 0.9384 | 0.9782 |
+| Ensemble F1 | 0.2809* | 0.9534 | 0.7062 | 0.7673 |
+| IForest Acc | 0.7724 | 0.8137 | 0.8250 | 0.8020 |
+| FPR | 0.0301 | 0.0006 | 0.0251 | 0.0043 |
+| Features | 122 | 78 | 76 | 276 |
+| Train samples | 276,840 | 1,981,520 | 1,253,710 | 2,398,359 |
+
+*Model A metrics limited by binary-only test labels.

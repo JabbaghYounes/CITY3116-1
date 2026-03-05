@@ -1,0 +1,113 @@
+ ./target/release/train --dataset unsw-nb15 \
+      --unsw-data ../../CIC-UNSW-NB15-Dataset/Data.csv \
+      --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
+      --output-dir data/models/model-c
+2026-03-05T06:56:59.130342Z  INFO train: rayon thread pool: 32 threads (auto)
+2026-03-05T06:56:59.130353Z  INFO train: Parallel IDS Model Training
+2026-03-05T06:56:59.130355Z  INFO train: Dataset: unsw-nb15
+2026-03-05T06:56:59.130357Z  INFO train: Output dir: data/models/model-c
+2026-03-05T06:56:59.130361Z  INFO train::engine::train: Loading UNSW-NB15 dataset
+2026-03-05T06:56:59.130363Z  INFO train::preprocess::unsw: loading UNSW-NB15 features from ../../CIC-UNSW-NB15-Dataset/Data.csv
+2026-03-05T06:56:59.130366Z  INFO train::preprocess::unsw: loading UNSW-NB15 labels from ../../CIC-UNSW-NB15-Dataset/Label.csv
+2026-03-05T06:57:00.223930Z  INFO train::preprocess::unsw: loaded 447915 UNSW-NB15 records
+2026-03-05T06:57:00.470826Z  INFO train::preprocess::unsw: UNSW-NB15 ready: train=313541, val=53749, test=80625, features=76
+2026-03-05T06:57:00.484058Z  INFO train::engine::train: Dataset loaded: 313541 train, 53749 val, 80625 test, 76 features, 5 classes
+2026-03-05T06:57:00.586708Z  INFO train::engine::train: applying SMOTE with target_count=250742
+2026-03-05T06:57:00.631673Z  INFO train::preprocess::smote: SMOTE: generating synthetic samples in parallel class=1 current_count=6441 needed=244301
+2026-03-05T06:57:00.975078Z  INFO train::preprocess::smote: SMOTE: generating synthetic samples in parallel class=2 current_count=32721 needed=218021
+2026-03-05T06:57:13.688323Z  INFO train::preprocess::smote: SMOTE: generating synthetic samples in parallel class=3 current_count=21828 needed=228914
+2026-03-05T06:57:19.118978Z  INFO train::preprocess::smote: SMOTE: generating synthetic samples in parallel class=4 current_count=1809 needed=248933
+2026-03-05T06:57:19.473606Z  INFO train::engine::train: after SMOTE: 1253710 samples
+2026-03-05T06:57:19.473621Z  INFO train::engine::train: training Random Forest (1253710 samples, 76 features)...
+2026-03-05T06:57:19.473992Z  INFO train::engine::random_forest: Training parallel Random Forest n_samples=1253710 n_features=76 n_classes=5 n_trees=100 max_depth=20 max_features=9
+2026-03-05T09:02:09.556420Z  INFO train::engine::random_forest: Random Forest training complete (100 trees)
+2026-03-05T09:02:09.556444Z  INFO train::engine::train: training Isolation Forest...
+2026-03-05T09:02:09.617291Z  INFO train::engine::train: IForest training on 250742 normal samples
+2026-03-05T09:02:09.617320Z  INFO train::engine::isolation_forest: Fitting Isolation Forest (parallel) n_trees=100 sample_size=256 height_limit=8 contamination=0.05
+2026-03-05T09:02:09.636053Z  INFO train::engine::isolation_forest: Isolation Forest threshold set threshold=0.4959700070016208
+2026-03-05T09:02:09.636070Z  INFO train::engine::train: evaluating models on test set (80625 samples)...
+
+=== Random Forest ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.9999     0.9749     0.9872
+DoS                      0.6850     0.6196     0.6507
+Probe                    0.7275     0.8744     0.7942
+R2L                      0.8377     0.7422     0.7871
+U2R                      0.2183     0.5642     0.3148
+----------------------------------------------------
+Macro avg                0.6937     0.7551     0.7068
+
+Accuracy : 0.9390
+FPR      : 0.0251
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal           62974        39      1372       106       106
+DoS                  0       948       248       260        74
+Probe                8       132      7319       412       499
+R2L                  1       234       994      4213       234
+U2R                  0        31       128        38       255
+
+
+=== Isolation Forest (binary: Normal vs Attack) ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.8425     0.9613     0.8980
+Attack                   0.6384     0.2757     0.3851
+----------------------------------------------------
+Macro avg                0.7404     0.6185     0.6415
+
+Accuracy : 0.8250
+FPR      : 0.0387
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal    Attack
+Normal           62094      2503
+Attack           11609      4419
+
+
+=== Ensemble (RF + IForest) ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   1.0000     0.9740     0.9868
+DoS                      0.6835     0.6196     0.6500
+Probe                    0.7238     0.8751     0.7923
+R2L                      0.8372     0.7422     0.7869
+U2R                      0.2183     0.5642     0.3148
+----------------------------------------------------
+Macro avg                0.6926     0.7550     0.7062
+
+Accuracy : 0.9384
+FPR      : 0.0260
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal           62916        41      1425       109       106
+DoS                  0       948       248       260        74
+Probe                1       133      7325       412       499
+R2L                  1       234       994      4213       234
+U2R                  0        31       128        38       255
+
+2026-03-05T09:02:09.727613Z  INFO train::engine::train: saving models...
+2026-03-05T09:02:09.990675Z  INFO train::engine::random_forest: Random Forest model saved path="data/models/model-c/random_forest.json"
+2026-03-05T09:02:09.990690Z  INFO train::engine::train:   RF model saved to data/models/model-c/random_forest.json
+2026-03-05T09:02:09.990919Z  INFO train::engine::isolation_forest: Isolation Forest saved path="data/models/model-c/isolation_forest.json"
+2026-03-05T09:02:09.990923Z  INFO train::engine::train:   IForest model saved to data/models/model-c/isolation_forest.json
+2026-03-05T09:02:09.990941Z  INFO train::engine::train:   Scaler saved to data/models/model-c/scaler.json
+2026-03-05T09:02:09.990979Z  INFO train::engine::train:   Report saved to data/models/model-c/evaluation_report.json
+2026-03-05T09:02:09.990981Z  INFO train::engine::train: training complete.
+
+========================================
+Training Summary (Parallel)
+========================================
+Features:       76
+Train samples:  1253710
+RF Accuracy:    0.9390
+RF Macro-F1:    0.7068
+Ensemble Acc:   0.9384
+Ensemble F1:    0.7062
+========================================

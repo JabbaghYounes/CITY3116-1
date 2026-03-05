@@ -1,0 +1,84 @@
+=== Random Forest ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.9863     0.9957     0.9910
+DoS                      0.9952     0.9006     0.9456
+Probe                    0.8727     0.9859     0.9258
+R2L                      0.8510     0.7505     0.7976
+U2R                      0.7660     0.0744     0.1356
+----------------------------------------------------
+Macro avg                0.8942     0.7414     0.7591
+
+Accuracy : 0.9780
+FPR      : 0.0043
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal          481212       310      1640       109         1
+DoS               5703     75036      2014       560         5
+Probe               75        17     36325       426         1
+R2L                890        28      1270      6593         4
+U2R                  8         4       377        59        36
+
+
+=== Isolation Forest (binary: Normal vs Attack) ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.8117     0.9752     0.8860
+Attack                   0.6264     0.1554     0.2490
+----------------------------------------------------
+Macro avg                0.7190     0.5653     0.5675
+
+Accuracy : 0.8020
+FPR      : 0.0248
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal    Attack
+Normal          471278     11994
+Attack          109323     20108
+
+
+=== Ensemble (RF + IForest) ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.9885     0.9943     0.9914
+DoS                      0.9888     0.9031     0.9440
+Probe                    0.8641     0.9876     0.9217
+R2L                      0.8572     0.8170     0.8366
+U2R                      0.7755     0.0785     0.1426
+----------------------------------------------------
+Macro avg                0.8948     0.7561     0.7673
+
+Accuracy : 0.9782
+FPR      : 0.0057
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal          480499       799      1859       114         1
+DoS               5280     75246      2192       595         5
+Probe               11        17     36387       428         1
+R2L                282        30      1292      7177         4
+U2R                  3         4       380        59        38
+
+2026-03-05T01:54:19.180729Z  INFO train::engine::train: saving models...
+2026-03-05T01:54:19.216878Z  INFO train::engine::random_forest: Random Forest model saved path="data/models/model-d/random_forest.json"
+2026-03-05T01:54:19.216891Z  INFO train::engine::train:   RF model saved to data/models/model-d/random_forest.json
+2026-03-05T01:54:19.216965Z  INFO train::engine::isolation_forest: Isolation Forest saved path="data/models/model-d/isolation_forest.json"
+2026-03-05T01:54:19.216968Z  INFO train::engine::train:   IForest model saved to data/models/model-d/isolation_forest.json
+2026-03-05T01:54:19.216994Z  INFO train::engine::train:   Scaler saved to data/models/model-d/scaler.json
+2026-03-05T01:54:19.217036Z  INFO train::engine::train:   Report saved to data/models/model-d/evaluation_report.json
+2026-03-05T01:54:19.217039Z  INFO train::engine::train: training complete.
+
+========================================
+Training Summary (Parallel)
+========================================
+Features:       276
+Train samples:  2398359
+RF Accuracy:    0.9780
+RF Macro-F1:    0.7591
+Ensemble Acc:   0.9782
+Ensemble F1:    0.7673
+========================================

@@ -16,6 +16,7 @@ CIC-UNSW-NB15-Dataset/
 
 # Trained models (large JSON files)
 cps-ids/data/models/
+cps-ids/parallel-train/data/models/
 
 # OS files
 .DS_Store
