@@ -9,6 +9,13 @@ cps-ids/cnn-lstm-train/target/
 cps-ids/cnn-lstm-train/libtorch/
 cps-ids/cnn-lstm-train/env.sh
 
+# PyTorch training (Python venv, cache, models)
+cps-ids/pytorch-train/.venv/
+cps-ids/pytorch-train/__pycache__/
+cps-ids/pytorch-train/data/
+cps-ids/pytorch-train/env.sh
+cps-ids/pytorch-train/_train_*.sh
+
 # Dataset folders (too large for git)
 NSL-KDD-Dataset/
 CIC-IDS2017-Dataset/

@@ -461,3 +461,73 @@ Accuracy: 0.9782 | Macro-F1: 0.7673
 | Train samples | 276,840 | 1,981,520 | 1,253,710 | 2,398,359 |
 
 *Model A metrics limited by binary-only test labels.
+
+## Phase 6: Python PyTorch CNN+LSTM Training Package (2026-03-05)
+
+### Motivation
+
+The Rust `cnn-lstm-train` crate uses tch-rs/libtorch which only supports NVIDIA GPUs (CUDA). The training machine has an AMD Radeon RX 9700 XT (RDNA 4). Python PyTorch supports AMD GPUs via ROCm, so a Python port was created at `cps-ids/pytorch-train/` to enable GPU-accelerated CNN+LSTM training on AMD hardware.
+
+### Implementation
+
+The Python package exactly replicates the Rust CNN+LSTM training pipeline:
+
+| File | Purpose |
+|------|---------|
+| `setup.sh` | Creates Python venv, installs PyTorch (ROCm/CUDA/CPU auto-detect), numpy, pandas, tqdm |
+| `requirements.txt` | Python dependencies |
+| `model.py` | CnnLstm nn.Module — exact replica of Rust architecture (Conv1d→BN→Conv1d→BN→LSTM→FC) |
+| `preprocessing.py` | MinMaxScaler, OneHotEncoder, SMOTE (matching Rust implementations) |
+| `data_loaders.py` | NSL-KDD, CIC-IDS2017, UNSW-NB15, combined loaders (same parsing, same attack category mappings) |
+| `evaluate.py` | Classification metrics (accuracy, per-class P/R/F1, macro averages, FPR, confusion matrix) |
+| `train.py` | Main CLI entry point + training loop (Adam, early stopping, LR decay, checkpointing) |
+
+### Key Design Decisions
+
+1. **Exact architecture replica** — same Conv1d channels (64, 128), kernel size (3), LSTM hidden (128), layers (2), dropout (0.3), FC hidden (64). Ensures fair comparison between Rust and Python training.
+
+2. **Same CLI flags** — `--dataset`, `--nsl-train`, `--nsl-test`, `--cicids-dir`, `--unsw-data`, `--unsw-label`, `--output-dir`, `--no-smote`, `--batch-size`, `--epochs`, `--learning-rate`, `--patience`, `--lstm-hidden`, `--lstm-layers`, `--dropout`.
+
+3. **Same JSON output format** — `evaluation_report.json` with identical schema (`cnn_lstm`, `training_metrics`, `model_config`, `dataset`, `n_train_samples`).
+
+4. **Same data pipeline** — load → MinMaxScaler normalize (fit on train) → optional SMOTE → tensor conversion → train → evaluate on test → save model + scaler + report.
+
+5. **PRNG note** — SMOTE uses numpy PCG64 (vs Rust ChaCha8). Same seed pattern (42 + class*1M + idx) but different PRNG engines means synthetic samples will differ. Algorithm and hyperparameters are identical.
+
+### AMD GPU Support
+
+- ROCm exposes AMD GPUs as CUDA devices in PyTorch (`torch.cuda.is_available()` returns True)
+- RX 9700 XT (gfx1201 / RDNA 4) may need `HSA_OVERRIDE_GFX_VERSION=11.0.0` for ROCm compatibility
+- setup.sh auto-detects ROCm and installs PyTorch with ROCm 6.2 support
+
+### CLI Usage
+
+```bash
+cd cps-ids/pytorch-train && ./setup.sh && source env.sh
+
+# Model A: NSL-KDD
+python train.py --dataset nsl-kdd \
+    --nsl-train ../../NSL-KDD-Dataset/KDDTrain+.txt \
+    --nsl-test ../../NSL-KDD-Dataset/KDDTest+.txt \
+    --output-dir data/models/model-a
+
+# Model B: CIC-IDS2017
+python train.py --dataset cicids2017 \
+    --cicids-dir ../../CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/ \
+    --output-dir data/models/model-b --no-smote
+
+# Model C: UNSW-NB15
+python train.py --dataset unsw-nb15 \
+    --unsw-data ../../CIC-UNSW-NB15-Dataset/Data.csv \
+    --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
+    --output-dir data/models/model-c
+
+# Model D: All three combined
+python train.py --dataset combined \
+    --nsl-train ../../NSL-KDD-Dataset/KDDTrain+.txt \
+    --nsl-test ../../NSL-KDD-Dataset/KDDTest+.txt \
+    --cicids-dir ../../CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/ \
+    --unsw-data ../../CIC-UNSW-NB15-Dataset/Data.csv \
+    --unsw-label ../../CIC-UNSW-NB15-Dataset/Label.csv \
+    --output-dir data/models/model-d --no-smote
+```
