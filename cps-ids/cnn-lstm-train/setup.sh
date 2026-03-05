@@ -96,7 +96,7 @@ LIBTORCH_VERSION="2.4.0"
 # Check if existing libtorch matches required version; re-download if not
 EXISTING_VERSION=""
 if [ -f "$LIBTORCH_DIR/build-version" ]; then
-    EXISTING_VERSION=$(cat "$LIBTORCH_DIR/build-version" | tr -d '[:space:]')
+    EXISTING_VERSION=$(cat "$LIBTORCH_DIR/build-version" | tr -d '[:space:]' | sed 's/+.*//')
 fi
 
 if [ -d "$LIBTORCH_DIR" ] && [ "$EXISTING_VERSION" = "$LIBTORCH_VERSION" ] && [ -f "$LIBTORCH_DIR/lib/libtorch_cpu.so" -o -f "$LIBTORCH_DIR/lib/libtorch_cpu.dylib" ]; then
