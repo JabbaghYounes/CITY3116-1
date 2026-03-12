@@ -15,17 +15,25 @@ A complete IDS/IPS prototype targeting industrial control systems, consisting of
 
 ## Detection Models
 
-| Model | Dataset | Features | RF Accuracy |
-|-------|---------|----------|-------------|
-| A | NSL-KDD (1999) | 122 | 0.67 |
-| B | CIC-IDS2017 (2017) | 78 | **0.9973** |
-| C | UNSW-NB15 (2015) | 76 | 0.9390 |
-| D | Combined (A+B+C) | 276 | 0.9780 |
-
 Three complementary models in weighted ensemble:
-- **Random Forest** (smartcore) — known attack patterns
-- **CNN+LSTM** (PyTorch) — sequential feature patterns, ~297K params
+- **Random Forest** (smartcore) — supervised, handles known attack patterns
+- **CNN+LSTM** (PyTorch) — deep learning, Conv1d→LSTM→FC, ~297K params
 - **Isolation Forest** — unsupervised anomaly detection for zero-days
+
+| Model | Dataset | Features | Random Forest | Isolation Forest | Ensemble | FPR |
+|-------|---------|----------|---------------|------------------|----------|-----|
+| A | NSL-KDD (1999) | 122 | 67.26%\* | 77.24% | 67.26%\* | 0.0301 |
+| B | CIC-IDS2017 (2017) | 78 | **99.73%** | 81.37% | **99.73%** | **0.0006** |
+| C | UNSW-NB15 (2015) | 76 | 93.90% | 82.50% | 93.84% | 0.0251 |
+| D | Combined (A+B+C) | 276 | 97.80% | 80.20% | **97.82%** | 0.0043 |
+
+\*Model A metrics limited by NSL-KDD binary-only test labels (Probe/R2L/U2R collapsed)
+
+Key findings:
+- **Model B** achieves 99.73% with 0.06% FPR — best single-dataset result
+- **Model D** demonstrates cross-era generalisation at 97.80% across 276 zero-padded features
+- **Ensemble consistently improves minority class detection** (Model D R2L recall: 0.75 → 0.82)
+- **U2R remains hardest** — extremely rare class across all datasets
 
 ## Quick Start
 
