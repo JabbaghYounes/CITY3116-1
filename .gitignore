@@ -1,20 +1,20 @@
 CLAUDE.md
 
 # Rust build artifacts
-cps-ids/target/
-cps-ids/parallel-train/target/
-cps-ids/cnn-lstm-train/target/
+ids/target/
+ids/parallel-train/target/
+ids/cnn-lstm-train/target/
 
 # CNN+LSTM libtorch (large download, ~2GB)
-cps-ids/cnn-lstm-train/libtorch/
-cps-ids/cnn-lstm-train/env.sh
+ids/cnn-lstm-train/libtorch/
+ids/cnn-lstm-train/env.sh
 
 # PyTorch training (Python venv, cache, models)
-cps-ids/pytorch-train/.venv/
-cps-ids/pytorch-train/__pycache__/
-cps-ids/pytorch-train/data/
-cps-ids/pytorch-train/env.sh
-cps-ids/pytorch-train/_train_*.sh
+ids/pytorch-train/.venv/
+ids/pytorch-train/__pycache__/
+ids/pytorch-train/data/
+ids/pytorch-train/env.sh
+ids/pytorch-train/_train_*.sh
 
 # Dataset folders (too large for git)
 NSL-KDD-Dataset/
@@ -22,8 +22,13 @@ CIC-IDS2017-Dataset/
 CIC-UNSW-NB15-Dataset/
 
 # Trained models (large JSON files)
-cps-ids/data/models/
-cps-ids/parallel-train/data/models/
+ids/data/models/
+ids/parallel-train/data/models/
+
+# Plant simulation runtime artifacts
+plant/simulation/plant_db.sqlite
+plant/simulation/__pycache__/
+plant/simulation/*.log
 
 # OS files
 .DS_Store

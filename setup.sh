@@ -113,17 +113,17 @@ info "cargo: $(cargo --version)"
 
 # --- Build the training binary ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CPS_IDS_DIR="$SCRIPT_DIR/cps-ids"
+IDS_DIR="$SCRIPT_DIR/ids"
 
-if [ -d "$CPS_IDS_DIR" ]; then
+if [ -d "$IDS_DIR" ]; then
     info "Building training binary (release mode)..."
-    cd "$CPS_IDS_DIR"
+    cd "$IDS_DIR"
     cargo build --release -p ids-engine --bin train_models
     info "Build successful!"
-    info "Binary at: $CPS_IDS_DIR/target/release/train_models"
+    info "Binary at: $IDS_DIR/target/release/train_models"
 else
-    warn "cps-ids/ directory not found at $CPS_IDS_DIR"
-    warn "Clone the repo first, then run: cd cps-ids && cargo build --release -p ids-engine --bin train_models"
+    warn "ids/ directory not found at $IDS_DIR"
+    warn "Clone the repo first, then run: cd ids && cargo build --release -p ids-engine --bin train_models"
 fi
 
 # --- Summary ---
@@ -132,7 +132,7 @@ echo "=========================================="
 info "Setup complete!"
 echo "=========================================="
 echo ""
-echo "Training commands (run from cps-ids/):"
+echo "Training commands (run from ids/):"
 echo ""
 echo "  # Model A: NSL-KDD only"
 echo "  cargo run --release -p ids-engine --bin train_models -- \\"

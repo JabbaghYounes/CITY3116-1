@@ -195,16 +195,16 @@ DatasetSplit
 
 ```bash
 # Download both datasets
-cd cps-ids && ./scripts/download_dataset.sh       # NSL-KDD
-cd cps-ids && ./scripts/download_cicids.sh         # CIC-IDS2017
+cd ids && ./scripts/download_dataset.sh       # NSL-KDD
+cd ids && ./scripts/download_cicids.sh         # CIC-IDS2017
 
 # Train all three models
-cd cps-ids && cargo run --release --bin train_models -- --models all
+cd ids && cargo run --release --bin train_models -- --models all
 
 # Train individually
-cd cps-ids && cargo run --release --bin train_models -- --models a
-cd cps-ids && cargo run --release --bin train_models -- --models b
-cd cps-ids && cargo run --release --bin train_models -- --models c
+cd ids && cargo run --release --bin train_models -- --models a
+cd ids && cargo run --release --bin train_models -- --models b
+cd ids && cargo run --release --bin train_models -- --models c
 
 # Output directories
 data/models/model_a_nslkdd/     # RF + IForest + scaler + report

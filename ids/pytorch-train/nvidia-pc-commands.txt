@@ -1,0 +1,6 @@
+cd ids/pytorch-train
+  ./setup.sh
+  source env.sh
+  python train.py --dataset cicids2017 \
+      --cicids-dir ../../CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/ \
+      --output-dir data/models/model-b --no-smote

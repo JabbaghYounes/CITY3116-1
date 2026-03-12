@@ -8,22 +8,22 @@ Built a complete AI/ML-driven Intrusion Detection and Prevention System for Cybe
 
 ## Phase 0: Project Setup
 
-**Action:** Created Cargo workspace at `cps-ids/` with 6 crates and supporting directories.
+**Action:** Created Cargo workspace at `ids/` with 6 crates and supporting directories.
 
 **Files created:**
-- `cps-ids/Cargo.toml` — Workspace root with shared dependencies (serde, tokio, tracing, ndarray, etc.)
-- `cps-ids/crates/ids-common/Cargo.toml`
-- `cps-ids/crates/ids-collector/Cargo.toml`
-- `cps-ids/crates/ids-preprocess/Cargo.toml`
-- `cps-ids/crates/ids-engine/Cargo.toml`
-- `cps-ids/crates/ids-response/Cargo.toml`
-- `cps-ids/crates/ids-dashboard/Cargo.toml`
-- `cps-ids/config.toml` — Runtime configuration with sections for network, host, preprocessing, detection, response, dashboard, and model paths
-- `cps-ids/scripts/download_dataset.sh` — NSL-KDD dataset download script
+- `ids/Cargo.toml` — Workspace root with shared dependencies (serde, tokio, tracing, ndarray, etc.)
+- `ids/crates/ids-common/Cargo.toml`
+- `ids/crates/ids-collector/Cargo.toml`
+- `ids/crates/ids-preprocess/Cargo.toml`
+- `ids/crates/ids-engine/Cargo.toml`
+- `ids/crates/ids-response/Cargo.toml`
+- `ids/crates/ids-dashboard/Cargo.toml`
+- `ids/config.toml` — Runtime configuration with sections for network, host, preprocessing, detection, response, dashboard, and model paths
+- `ids/scripts/download_dataset.sh` — NSL-KDD dataset download script
 
 **Directory structure:**
 ```
-cps-ids/
+ids/
   Cargo.toml
   config.toml
   crates/

@@ -1,4 +1,4 @@
-A roadmap to get your cps-ids Rust project training on a GPU, instead of CPU. This will drastically reduce training time for large datasets like CIC-IDS2017 or the combined Model D.
+A roadmap to get your ids Rust project training on a GPU, instead of CPU. This will drastically reduce training time for large datasets like CIC-IDS2017 or the combined Model D.
 
 1️⃣ Why CPU Training is Slow
 

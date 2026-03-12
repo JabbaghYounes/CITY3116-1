@@ -253,21 +253,21 @@ DatasetSplit
 
 ```bash
 # Download all three datasets
-cd cps-ids && ./scripts/download_dataset.sh       # NSL-KDD
-cd cps-ids && ./scripts/download_cicids.sh         # CIC-IDS2017
-cd cps-ids && ./scripts/download_unsw.sh           # UNSW-NB15
+cd ids && ./scripts/download_dataset.sh       # NSL-KDD
+cd ids && ./scripts/download_cicids.sh         # CIC-IDS2017
+cd ids && ./scripts/download_unsw.sh           # UNSW-NB15
 
 # Train all four models
-cd cps-ids && cargo run --release --bin train_models -- --models all
+cd ids && cargo run --release --bin train_models -- --models all
 
 # Train individually
-cd cps-ids && cargo run --release --bin train_models -- --models a   # NSL-KDD
-cd cps-ids && cargo run --release --bin train_models -- --models b   # CIC-IDS2017
-cd cps-ids && cargo run --release --bin train_models -- --models c   # UNSW-NB15
-cd cps-ids && cargo run --release --bin train_models -- --models d   # Combined
+cd ids && cargo run --release --bin train_models -- --models a   # NSL-KDD
+cd ids && cargo run --release --bin train_models -- --models b   # CIC-IDS2017
+cd ids && cargo run --release --bin train_models -- --models c   # UNSW-NB15
+cd ids && cargo run --release --bin train_models -- --models d   # Combined
 
 # Reduce sample sizes for constrained memory
-cd cps-ids && cargo run --release --bin train_models -- --models d --max-samples 80000
+cd ids && cargo run --release --bin train_models -- --models d --max-samples 80000
 
 # Output directories
 data/models/model_a_nslkdd/

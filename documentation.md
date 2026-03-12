@@ -2,6 +2,64 @@
 
 This document logs the implementation steps taken for the CPS-IDS multi-dataset training pipeline.
 
+## Implementation Beyond the Proposed Architecture
+
+The initial proposed architecture described a minimal passive network traffic monitoring pipeline: CSV ingestion → preprocessing → single Random Forest classifier → binary detection → alert generation. The final implementation significantly exceeds this scope across every component:
+
+### 1. Hybrid NIDS + HIDS (vs. network-only)
+
+The proposed design was a passive NIDS that only processed network flow CSVs. The implementation is a full hybrid system:
+- **NIDS**: Live packet capture (libpcap) with bidirectional flow reconstruction, plus ICS/SCADA protocol parsing for Modbus (function code validation), DNP3, and OPC-UA — not just flow-level CSV analysis
+- **HIDS**: File integrity monitoring (inotify with SHA-256 checksums), process monitoring (spawn/terminate/elevation detection), syscall tracing (audit.log parsing), and system log watching (auth.log pattern matching for failed logins, privilege escalation, segfaults)
+
+This dual-layer approach detects threats that a network-only IDS would miss entirely (insider threats, privilege escalation, file tampering).
+
+### 2. Multi-Model Ensemble (vs. single Random Forest)
+
+The proposed architecture used a single Random Forest. The implementation deploys three complementary models with weighted fusion:
+- **Random Forest** (supervised, smartcore): Primary classifier — handles known attack patterns with high precision
+- **CNN+LSTM** (deep learning, PyTorch): Conv1d→LSTM→FC architecture (~297K parameters) — captures sequential patterns in feature vectors
+- **Isolation Forest** (unsupervised): Anomaly detector trained only on normal traffic — detects novel zero-day attacks not in training data
+
+The ensemble combines RF probability distributions with IForest anomaly scores via a configurable weighted scheme (default: RF 0.35, LSTM 0.40, IForest 0.25), boosting attack class probabilities when the IForest flags anomalies. This provides defence-in-depth at the detection layer.
+
+### 3. Multi-Dataset Cross-Era Training (vs. single dataset)
+
+The proposed system trained on a single dataset. The implementation trains across three datasets spanning 1999–2017 with a unified 5-class label scheme:
+- **Model A**: NSL-KDD (1999, 122 features) — classic benchmark
+- **Model B**: CIC-IDS2017 (2017, 78 features) — modern traffic, 99.73% RF accuracy
+- **Model C**: UNSW-NB15 (2015, 76 features) — mixed attack types
+- **Model D**: Combined union (276 features) — cross-dataset generalisation, 97.80% accuracy
+
+The combined model demonstrates that zero-padded feature union enables cross-era generalisation — the model learns patterns from all three attack distributions simultaneously.
+
+### 4. 5-Class Multiclass Classification (vs. binary/per-label)
+
+The proposed system classified traffic as binary (e.g., BENIGN vs DDoS). The implementation uses a unified 5-class taxonomy (Normal, DoS, Probe, R2L, U2R) mapped consistently across all three datasets, enabling:
+- Cross-dataset comparison of per-class detection rates
+- Identification of which attack categories each dataset best represents
+- Macro-averaged metrics that expose weaknesses in minority classes (e.g., U2R)
+
+### 5. Configurable IDS/IPS Mode (vs. passive only)
+
+The proposed system was passive (alert-only). The implementation supports both modes:
+- **IDS mode**: Alert generation, severity classification, SIEM export (CEF/syslog)
+- **IPS mode**: Automated network blocking (iptables with configurable block duration), host response (process termination, file quarantine), with nips/hips independently toggleable
+
+### 6. Multiple Training Backends (vs. single implementation)
+
+The proposed system had one training pipeline. The implementation provides four:
+- **ids-engine** (Rust, smartcore): Single-threaded RF + IForest, baseline
+- **parallel-train** (Rust, rayon): Multi-threaded RF + IForest for 16+ core machines
+- **cnn-lstm-train** (Rust, tch-rs/libtorch): GPU-accelerated deep learning, NVIDIA CUDA
+- **pytorch-train** (Python, PyTorch): GPU-accelerated deep learning, AMD ROCm support
+
+This enables fair comparison between traditional ML and deep learning, and between CPU and GPU training performance.
+
+### 7. Rule-Based Detection Layer
+
+In addition to ML models, a rule-based engine provides signature detection for known CPS-specific attacks (Modbus function code violations, known malicious patterns), complementing the ML ensemble with deterministic detection.
+
 ## Phase 1: Multi-Dataset Loader Implementation (2026-03-03)
 
 ### Context
@@ -21,11 +79,11 @@ The UNSW-NB15 dataset on disk is a CICFlowMeter-processed version (76 numeric co
 ### Steps Taken
 
 #### Step 1: Made `label_names()` public
-- **File**: `cps-ids/crates/ids-preprocess/src/dataset.rs`
+- **File**: `ids/crates/ids-preprocess/src/dataset.rs`
 - Changed `fn label_names()` → `pub fn label_names()` to allow other dataset loaders to reuse the canonical 5-class names: Normal, DoS, Probe, R2L, U2R.
 
 #### Step 2: Created CIC-IDS2017 loader
-- **File**: `cps-ids/crates/ids-preprocess/src/cicids.rs` (new, ~250 lines)
+- **File**: `ids/crates/ids-preprocess/src/cicids.rs` (new, ~250 lines)
 - Public function: `load_cicids2017(csv_dir: &Path) -> Result<DatasetSplit>`
 - Concatenates 8 CSV files from the MachineLearningCSV directory
 - Data quality mitigations:
@@ -38,7 +96,7 @@ The UNSW-NB15 dataset on disk is a CICFlowMeter-processed version (76 numeric co
 - 3 unit tests: label mapping, clean_numeric, sanitize_f64
 
 #### Step 3: Created UNSW-NB15 loader
-- **File**: `cps-ids/crates/ids-preprocess/src/unsw.rs` (new, ~200 lines)
+- **File**: `ids/crates/ids-preprocess/src/unsw.rs` (new, ~200 lines)
 - Public function: `load_unsw_nb15(data_path: &Path, label_path: &Path) -> Result<DatasetSplit>`
 - Loads Data.csv (76 numeric columns) and Label.csv (integer labels 0–9) as separate files
 - Verifies row count alignment between the two files
@@ -47,7 +105,7 @@ The UNSW-NB15 dataset on disk is a CICFlowMeter-processed version (76 numeric co
 - 1 unit test: label mapping for all 10 integer values
 
 #### Step 4: Created N-dataset merger
-- **File**: `cps-ids/crates/ids-preprocess/src/combined.rs` (new, ~170 lines)
+- **File**: `ids/crates/ids-preprocess/src/combined.rs` (new, ~170 lines)
 - Public function: `merge_datasets(splits: &[(&str, &DatasetSplit)]) -> Result<DatasetSplit>`
 - Strategy: union with zero-padding — each dataset's features occupy a dedicated column range, other columns are zero
 - Feature names prefixed with dataset identifier (e.g., `nsl_duration`, `cic_Flow Duration`, `unsw_Flow Duration`)
@@ -56,31 +114,31 @@ The UNSW-NB15 dataset on disk is a CICFlowMeter-processed version (76 numeric co
 - 1 unit test: verifies dimensions, zero-padding correctness, and feature names
 
 #### Step 5: Wired up `ids-preprocess` modules
-- **File**: `cps-ids/crates/ids-preprocess/src/lib.rs`
+- **File**: `ids/crates/ids-preprocess/src/lib.rs`
 - Added `pub mod cicids; pub mod unsw; pub mod combined;`
 - Added re-exports: `load_cicids2017`, `load_unsw_nb15`, `merge_datasets`, `label_names`
 
 #### Step 6: Created training orchestrator
-- **File**: `cps-ids/crates/ids-engine/src/train.rs` (new, ~220 lines)
+- **File**: `ids/crates/ids-engine/src/train.rs` (new, ~220 lines)
 - `DatasetSource` enum with 4 variants: `NslKdd`, `CicIds2017`, `UnswNb15`, `Combined`
 - `TrainConfig` struct: configurable output paths, SMOTE settings, IForest parameters
 - `run_training()` pipeline: load → MinMaxScaler normalize → optional SMOTE → train Random Forest → train Isolation Forest (on normal samples only) → evaluate all three (RF, IForest binary, Ensemble) → save models + evaluation report as JSON
 
 #### Step 7: Updated `ids-engine` configuration
-- **File**: `cps-ids/crates/ids-engine/Cargo.toml`
+- **File**: `ids/crates/ids-engine/Cargo.toml`
   - Added `clap = { version = "4", features = ["derive"] }` for CLI parsing
   - Added `tracing-subscriber` for logging initialisation in the binary
   - Added `[[bin]] name = "train_models"` target
-- **File**: `cps-ids/crates/ids-engine/src/lib.rs`
+- **File**: `ids/crates/ids-engine/src/lib.rs`
   - Added `pub mod train;`
 
 #### Step 8: Created CLI binary
-- **File**: `cps-ids/crates/ids-engine/src/bin/train_models.rs` (new, ~180 lines)
+- **File**: `ids/crates/ids-engine/src/bin/train_models.rs` (new, ~180 lines)
 - clap-derive CLI with flags: `--dataset` (nsl-kdd|cicids2017|unsw-nb15|combined), dataset path arguments, `--output-dir`, `--no-smote`, `--smote-target`, IForest configuration
 - Prints training summary with accuracy and F1 scores
 
 #### Step 9: Fixed `ids-response` compile error
-- **File**: `cps-ids/crates/ids-response/src/alerter.rs`
+- **File**: `ids/crates/ids-response/src/alerter.rs`
 - Added missing `use ids_common::types::AlertSource;` import in test module
 - This was preventing `cargo test` from working at the workspace level
 
@@ -101,7 +159,7 @@ After all changes, full workspace tests pass:
 ### Training CLI Usage
 
 ```bash
-# From cps-ids/ directory
+# From ids/ directory
 
 # Model A: NSL-KDD only
 cargo run --release -p ids-engine --bin train_models -- \
@@ -160,7 +218,7 @@ Three issues were discovered and fixed when running the training pipeline agains
 
 3. **Binary test labels** — The test file uses generic binary labels ("Normal" / "Attack") instead of specific attack names (neptune, smurf, etc.). Added `"attack" => 1` (DoS) mapping to `attack_category()`. This means multiclass evaluation on the test set is limited — Probe, R2L, and U2R classes have zero test samples.
 
-**Files modified**: `cps-ids/crates/ids-preprocess/src/dataset.rs`
+**Files modified**: `ids/crates/ids-preprocess/src/dataset.rs`
 
 ### Training Run
 
@@ -169,7 +227,7 @@ Three issues were discovered and fixed when running the training pipeline agains
 - **Train/Val split**: 82% / 18% (103,298 / 22,675)
 - **SMOTE**: Enabled, target=55,368 per class → 276,840 total training samples
 - **Duration**: ~34 minutes total (SMOTE ~6 min, RF training ~10 min, evaluation ~19 min)
-- **Output**: `cps-ids/data/models/model-a/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
+- **Output**: `ids/data/models/model-a/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
 
 ### Results
 
@@ -216,7 +274,7 @@ Accuracy: 0.6726 | Macro-F1: 0.2809 (identical to RF alone)
 - **Train/Val/Test split**: 70% / 12% / 18% (1,981,520 / 339,689 / 509,534)
 - **SMOTE**: Disabled (`--no-smote`) due to dataset size — SMOTE on ~2M samples would be prohibitively slow
 - **Duration**: ~9 hours total (data loading ~20s, RF training ~8.5h, IForest + evaluation ~30 min, model save ~16s)
-- **Output**: `cps-ids/data/models/model-b/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
+- **Output**: `ids/data/models/model-b/` (random_forest.json, isolation_forest.json, scaler.json, evaluation_report.json)
 
 ### Results
 
@@ -275,7 +333,7 @@ Accuracy: 0.9973 | Macro-F1: 0.9534 (identical to RF alone)
 
 ### Motivation
 
-To compare traditional ML (Random Forest + Isolation Forest) with deep learning for IDS, a standalone CNN+LSTM training crate was created at `cps-ids/cnn-lstm-train/`. This uses the same 4 models (A–D), same datasets, and same 5-class scheme — enabling direct comparison.
+To compare traditional ML (Random Forest + Isolation Forest) with deep learning for IDS, a standalone CNN+LSTM training crate was created at `ids/cnn-lstm-train/`. This uses the same 4 models (A–D), same datasets, and same 5-class scheme — enabling direct comparison.
 
 ### Architecture
 
@@ -305,7 +363,7 @@ Input: (batch, n_features)
 
 ### Implementation
 
-Created `cps-ids/cnn-lstm-train/` as a standalone crate (`[workspace]` opt-out from parent workspace):
+Created `ids/cnn-lstm-train/` as a standalone crate (`[workspace]` opt-out from parent workspace):
 
 | File | Purpose |
 |------|---------|
@@ -329,13 +387,13 @@ Created `cps-ids/cnn-lstm-train/` as a standalone crate (`[workspace]` opt-out f
 
 - All Rust source code compiles cleanly (torch-sys requires libtorch at link time, handled by setup.sh)
 - Existing workspace: all 60 tests pass, cnn-lstm-train crate is fully isolated
-- `.gitignore` updated: `cps-ids/cnn-lstm-train/target/`, `libtorch/`, `env.sh`
+- `.gitignore` updated: `ids/cnn-lstm-train/target/`, `libtorch/`, `env.sh`
 
 ### CLI Usage
 
 ```bash
 # Setup (downloads libtorch, builds binary)
-cd cps-ids/cnn-lstm-train && chmod +x setup.sh && ./setup.sh
+cd ids/cnn-lstm-train && chmod +x setup.sh && ./setup.sh
 
 # Source environment before running
 source env.sh
@@ -377,7 +435,7 @@ Models C and D were trained on a 16-core machine using the `parallel-train` crat
 - **Train/Val/Test split**: 70% / 12% / 18% (313,541 / 53,749 / 80,625)
 - **SMOTE**: Enabled, target=250,742 per class → 1,253,710 total training samples
 - **Duration**: ~2 hours (RF training dominated)
-- **Output**: `cps-ids/parallel-train/data/models/model-c/`
+- **Output**: `ids/parallel-train/data/models/model-c/`
 
 #### Random Forest (5-class)
 
@@ -410,7 +468,7 @@ Accuracy: 0.9384 | Macro-F1: 0.7062
 - **Train/Val/Test split**: 70% / 12% / 18% (2,398,359 / ~408K / ~612K)
 - **SMOTE**: Disabled (`--no-smote`) due to combined dataset size
 - **Duration**: ~7 hours
-- **Output**: `cps-ids/parallel-train/data/models/model-d/`
+- **Output**: `ids/parallel-train/data/models/model-d/`
 
 #### Random Forest (5-class)
 
@@ -466,7 +524,7 @@ Accuracy: 0.9782 | Macro-F1: 0.7673
 
 ### Motivation
 
-The Rust `cnn-lstm-train` crate uses tch-rs/libtorch which only supports NVIDIA GPUs (CUDA). The training machine has an AMD Radeon RX 9700 XT (RDNA 4). Python PyTorch supports AMD GPUs via ROCm, so a Python port was created at `cps-ids/pytorch-train/` to enable GPU-accelerated CNN+LSTM training on AMD hardware.
+The Rust `cnn-lstm-train` crate uses tch-rs/libtorch which only supports NVIDIA GPUs (CUDA). The training machine has an AMD Radeon RX 7900 XT (RDNA 3). Python PyTorch supports AMD GPUs via ROCm, so a Python port was created at `ids/pytorch-train/` to enable GPU-accelerated CNN+LSTM training on AMD hardware.
 
 ### Implementation
 
@@ -497,13 +555,13 @@ The Python package exactly replicates the Rust CNN+LSTM training pipeline:
 ### AMD GPU Support
 
 - ROCm exposes AMD GPUs as CUDA devices in PyTorch (`torch.cuda.is_available()` returns True)
-- RX 9700 XT (gfx1201 / RDNA 4) may need `HSA_OVERRIDE_GFX_VERSION=11.0.0` for ROCm compatibility
+- RX 7900 XT (RDNA 3) may need `HSA_OVERRIDE_GFX_VERSION=11.0.0` for ROCm compatibility
 - setup.sh auto-detects ROCm and installs PyTorch with ROCm 6.2 support
 
 ### CLI Usage
 
 ```bash
-cd cps-ids/pytorch-train && ./setup.sh && source env.sh
+cd ids/pytorch-train && ./setup.sh && source env.sh
 
 # Model A: NSL-KDD
 python train.py --dataset nsl-kdd \

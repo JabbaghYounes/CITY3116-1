@@ -19,7 +19,7 @@ The project targets the NSL-KDD dataset as the primary benchmark (network featur
 ### Cargo Workspace Layout
 
 ```
-cps-ids/
+ids/
   Cargo.toml                    # workspace root
   config.toml                   # runtime configuration
   crates/

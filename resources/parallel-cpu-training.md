@@ -28,7 +28,7 @@ Conservative estimate for Model D (combined, ~2.4M rows, 276 features, no SMOTE)
 
 ### 1. Add rayon dependency
 
-**Files**: `cps-ids/crates/ids-engine/Cargo.toml`, `cps-ids/crates/ids-preprocess/Cargo.toml`
+**Files**: `ids/crates/ids-engine/Cargo.toml`, `ids/crates/ids-preprocess/Cargo.toml`
 
 ```toml
 # ids-engine/Cargo.toml
@@ -40,7 +40,7 @@ rayon = "1.10"
 
 ### 2. Replace smartcore RF with custom parallel RF
 
-**File**: `cps-ids/crates/ids-engine/src/random_forest.rs`
+**File**: `ids/crates/ids-engine/src/random_forest.rs`
 
 smartcore's `RandomForestClassifier` is a black box — we can't parallelise its internals. Replace it with a custom implementation that builds individual decision trees in parallel.
 
@@ -145,7 +145,7 @@ Option (b) is recommended for Model D since retraining 100 trees on 2.4M rows at
 
 ### 3. Parallelise Isolation Forest tree construction
 
-**File**: `cps-ids/crates/ids-engine/src/isolation_forest.rs`
+**File**: `ids/crates/ids-engine/src/isolation_forest.rs`
 
 The IForest already uses a custom implementation. Change the tree-building loop to use `par_iter`:
 
@@ -178,7 +178,7 @@ pub fn anomaly_scores(&self, x: &Array2<f64>) -> Array1<f64> {
 
 ### 4. Parallelise SMOTE k-NN search
 
-**File**: `cps-ids/crates/ids-preprocess/src/smote.rs`
+**File**: `ids/crates/ids-preprocess/src/smote.rs`
 
 The k-NN search inside SMOTE is O(n²) per class — for each synthetic sample, it computes distances to all same-class samples. Parallelise the outer loop:
 
@@ -203,7 +203,7 @@ Note: `rand::thread_rng()` is thread-local and safe with rayon. Each thread gets
 
 ### 5. Parallelise evaluation
 
-**File**: `cps-ids/crates/ids-engine/src/train.rs`
+**File**: `ids/crates/ids-engine/src/train.rs`
 
 RF prediction on the test set (22K–509K samples) can be parallelised by chunking:
 
