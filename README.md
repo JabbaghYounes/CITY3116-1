@@ -1,6 +1,6 @@
 # CPS-IDS
 
-AI/ML-driven Intrusion Detection System for Cyber-Physical Systems, built for the CITY3116 Advanced Computer Forensics module.
+AI/ML-driven Intrusion Detection System for Cyber-Physical Systems.
 
 ## What This Is
 
@@ -11,30 +11,7 @@ A complete IDS/IPS prototype targeting industrial control systems, consisting of
 
 ## Architecture
 
-```
-                    ┌─────────────────────────┐
-                    │     PC / Laptop          │
-                    │  IDS Engine (ids/)       │
-                    │  SCADA + Wireshark       │
-                    │  Attack Framework        │
-                    └────────────┬─────────────┘
-                                 │ Ethernet (Modbus TCP)
-                    ┌────────────▼─────────────┐
-                    │  TP-Link LS1005G Switch   │
-                    └────────────┬─────────────┘
-                                 │
-              ┌──────────────────┴──────────────────┐
-              │                                     │
-     ┌────────▼─────────┐               ┌──────────▼────────┐
-     │  PLC 1 (Mega)    │   RS-485      │  PLC 2 (Uno)      │
-     │  + W5500 Ethernet │──────────────│  + MAX485          │
-     │  192.168.1.20    │  Modbus RTU   │  Slave ID 1        │
-     └────────┬─────────┘               └──────────┬────────┘
-              │                                     │
-     Actuators (pump,                      Sensors (ultrasonic,
-     servo valve, buzzer)                  temp, sound, motion,
-                                           water level)
-```
+![CPS-IDS Architecture](resources/images/architecture.png)
 
 ## Detection Models
 
