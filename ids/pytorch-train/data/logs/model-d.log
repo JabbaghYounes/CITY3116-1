@@ -1,0 +1,98 @@
+/home/vt/Downloads/CITY3116-1/cps-ids/pytorch-train/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py:125: UserWarning: Attempting to use hipBLASLt on an unsupported architecture! Overriding blas backend to hipblas (Triggered internally at ../aten/src/ATen/Context.cpp:296.)
+  return F.linear(input, self.weight, self.bias)
+[+] Using GPU: Radeon RX 7900 XT
+
+=== Loading Dataset ===
+Loading combined dataset (NSL-KDD + CIC-IDS2017 + UNSW-NB15)
+Loading NSL-KDD training data from /home/vt/Downloads/CITY3116-1/NSL-KDD-Dataset/KDDTrain+.txt
+Loading NSL-KDD test data from /home/vt/Downloads/CITY3116-1/NSL-KDD-Dataset/KDDTest+.txt
+  parsed 125973 training, 22544 test records
+  one-hot widths: protocol=3, service=70, flag=11
+  dataset ready: train=103298, val=22675, test=22544, features=122
+Loading CIC-IDS2017: Monday-WorkingHours.pcap_ISCX.csv
+  loaded 529918 records
+Loading CIC-IDS2017: Tuesday-WorkingHours.pcap_ISCX.csv
+  loaded 445909 records
+Loading CIC-IDS2017: Wednesday-workingHours.pcap_ISCX.csv
+  loaded 692703 records
+Loading CIC-IDS2017: Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv
+  loaded 170366 records
+Loading CIC-IDS2017: Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv
+  loaded 288602 records
+Loading CIC-IDS2017: Friday-WorkingHours-Morning.pcap_ISCX.csv
+  loaded 191033 records
+Loading CIC-IDS2017: Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv
+  loaded 286467 records
+Loading CIC-IDS2017: Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
+  loaded 225745 records
+Total CIC-IDS2017 records: 2830743
+CIC-IDS2017 ready: train=1981520, val=339689, test=509534, features=78
+Loading UNSW-NB15 features from /home/vt/Downloads/CITY3116-1/CIC-UNSW-NB15-Dataset/Data.csv
+Loading UNSW-NB15 labels from /home/vt/Downloads/CITY3116-1/CIC-UNSW-NB15-Dataset/Label.csv
+  loaded 447915 UNSW-NB15 records
+UNSW-NB15 ready: train=313540, val=53750, test=80625, features=76
+Merging 3 datasets: nsl(122), cic(78), unsw(76) -> 276 total features
+Merged dataset: train=2398358, val=416114, test=612703, features=276
+Dataset: 2398358 train, 416114 val, 612703 test, 276 features, 5 classes
+
+=== Normalizing ===
+
+=== Converting to tensors ===
+
+CNN+LSTM: 276 features, 5 classes, hidden=128, layers=2, dropout=0.3
+Total parameters: 298,117
+
+Training: 2398358 samples, 4685 batches/epoch, device=cuda
+
+epoch 1/50: train_loss=0.2647, val_loss=0.1964, val_acc=0.9322, lr=1.00e-03
+epoch 2/50: train_loss=0.0830, val_loss=0.6083, val_acc=0.8783, lr=1.00e-03
+epoch 3/50: train_loss=0.0594, val_loss=0.0656, val_acc=0.9763, lr=1.00e-03
+epoch 4/50: train_loss=0.0457, val_loss=0.2999, val_acc=0.9232, lr=1.00e-03
+epoch 5/50: train_loss=0.0488, val_loss=0.0561, val_acc=0.9769, lr=1.00e-03
+epoch 6/50: train_loss=0.0392, val_loss=1.3514, val_acc=0.8446, lr=1.00e-03
+epoch 7/50: train_loss=0.0379, val_loss=0.7960, val_acc=0.8667, lr=1.00e-03
+epoch 8/50: train_loss=0.0385, val_loss=0.9680, val_acc=0.8710, lr=1.00e-03
+  reducing learning rate to 5.00e-04
+epoch 9/50: train_loss=0.0331, val_loss=0.0330, val_acc=0.9884, lr=5.00e-04
+epoch 10/50: train_loss=0.0320, val_loss=0.0817, val_acc=0.9738, lr=5.00e-04
+epoch 11/50: train_loss=0.0316, val_loss=0.0319, val_acc=0.9887, lr=5.00e-04
+epoch 12/50: train_loss=0.0306, val_loss=0.6382, val_acc=0.8935, lr=5.00e-04
+epoch 13/50: train_loss=0.0313, val_loss=0.9927, val_acc=0.8846, lr=5.00e-04
+epoch 14/50: train_loss=0.0295, val_loss=1.6602, val_acc=0.8462, lr=5.00e-04
+  reducing learning rate to 2.50e-04
+epoch 15/50: train_loss=0.0280, val_loss=0.1914, val_acc=0.9524, lr=2.50e-04
+epoch 16/50: train_loss=0.0276, val_loss=0.0569, val_acc=0.9810, lr=2.50e-04
+  early stopping at epoch 16 (best epoch 11)
+
+Best epoch: 11, val_loss=0.0319, val_acc=0.9887
+
+=== Evaluating on test set (612703 samples) ===
+
+=== CNN+LSTM Test Results ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.9884     0.9941     0.9913
+DoS                      0.9868     0.8999     0.9413
+Probe                    0.8555     0.9868     0.9164
+R2L                      0.8160     0.7515     0.7824
+U2R                      0.4595     0.0368     0.0681
+----------------------------------------------------
+Macro avg                0.8212     0.7338     0.7399
+
+Accuracy : 0.9767
+FPR      : 0.0059
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal          480592       832      1845       165         1
+DoS               5009     74848      2374       943         2
+Probe               70        62     36316       353         1
+R2L                554        98      1526      6634        16
+U2R                  7        12       391        35        17
+
+Model saved to data/models/model-d/cnn_lstm_model.pt
+Scaler saved to data/models/model-d/scaler.json
+Report saved to data/models/model-d/evaluation_report.json
+
+Training complete in 8429.3s

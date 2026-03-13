@@ -12,7 +12,10 @@ ids/cnn-lstm-train/env.sh
 # PyTorch training (Python venv, cache, models)
 ids/pytorch-train/.venv/
 ids/pytorch-train/__pycache__/
-ids/pytorch-train/data/
+# PyTorch training data (allow trained models + logs, ignore raw data)
+ids/pytorch-train/data/*
+!ids/pytorch-train/data/models/
+!ids/pytorch-train/data/logs/
 ids/pytorch-train/env.sh
 ids/pytorch-train/_train_*.sh
 

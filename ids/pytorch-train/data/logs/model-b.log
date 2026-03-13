@@ -1,0 +1,100 @@
+/home/vt/Downloads/CITY3116-1/cps-ids/pytorch-train/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py:125: UserWarning: Attempting to use hipBLASLt on an unsupported architecture! Overriding blas backend to hipblas (Triggered internally at ../aten/src/ATen/Context.cpp:296.)
+  return F.linear(input, self.weight, self.bias)
+[+] Using GPU: Radeon RX 7900 XT
+
+=== Loading Dataset ===
+Loading CIC-IDS2017: Monday-WorkingHours.pcap_ISCX.csv
+  loaded 529918 records
+Loading CIC-IDS2017: Tuesday-WorkingHours.pcap_ISCX.csv
+  loaded 445909 records
+Loading CIC-IDS2017: Wednesday-workingHours.pcap_ISCX.csv
+  loaded 692703 records
+Loading CIC-IDS2017: Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv
+  loaded 170366 records
+Loading CIC-IDS2017: Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv
+  loaded 288602 records
+Loading CIC-IDS2017: Friday-WorkingHours-Morning.pcap_ISCX.csv
+  loaded 191033 records
+Loading CIC-IDS2017: Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv
+  loaded 286467 records
+Loading CIC-IDS2017: Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv
+  loaded 225745 records
+Total CIC-IDS2017 records: 2830743
+CIC-IDS2017 ready: train=1981520, val=339689, test=509534, features=78
+Dataset: 1981520 train, 339689 val, 509534 test, 78 features, 5 classes
+
+=== Normalizing ===
+
+=== Converting to tensors ===
+
+CNN+LSTM: 78 features, 5 classes, hidden=128, layers=2, dropout=0.3
+Total parameters: 298,117
+
+Training: 1981520 samples, 3871 batches/epoch, device=cuda
+
+epoch 1/50: train_loss=0.1364, val_loss=0.0909, val_acc=0.9656, lr=1.00e-03
+epoch 2/50: train_loss=0.0481, val_loss=0.1825, val_acc=0.9415, lr=1.00e-03
+epoch 3/50: train_loss=0.0419, val_loss=0.0457, val_acc=0.9802, lr=1.00e-03
+epoch 4/50: train_loss=0.0363, val_loss=0.6804, val_acc=0.8823, lr=1.00e-03
+epoch 5/50: train_loss=0.0344, val_loss=0.0402, val_acc=0.9813, lr=1.00e-03
+epoch 6/50: train_loss=0.0322, val_loss=0.0734, val_acc=0.9549, lr=1.00e-03
+epoch 7/50: train_loss=0.0217, val_loss=0.4869, val_acc=0.9397, lr=1.00e-03
+epoch 8/50: train_loss=0.0208, val_loss=0.0334, val_acc=0.9850, lr=1.00e-03
+epoch 9/50: train_loss=0.0262, val_loss=0.0334, val_acc=0.9846, lr=1.00e-03
+epoch 10/50: train_loss=0.0250, val_loss=0.0257, val_acc=0.9948, lr=1.00e-03
+epoch 11/50: train_loss=0.0272, val_loss=0.0361, val_acc=0.9842, lr=1.00e-03
+epoch 12/50: train_loss=0.0274, val_loss=0.0337, val_acc=0.9853, lr=1.00e-03
+epoch 13/50: train_loss=0.0293, val_loss=0.0122, val_acc=0.9959, lr=1.00e-03
+epoch 14/50: train_loss=0.0317, val_loss=0.0336, val_acc=0.9850, lr=1.00e-03
+epoch 15/50: train_loss=0.0330, val_loss=0.0330, val_acc=0.9849, lr=1.00e-03
+epoch 16/50: train_loss=0.0248, val_loss=0.0330, val_acc=0.9851, lr=1.00e-03
+  reducing learning rate to 5.00e-04
+epoch 17/50: train_loss=0.0174, val_loss=0.0086, val_acc=0.9972, lr=5.00e-04
+epoch 18/50: train_loss=0.0122, val_loss=0.0489, val_acc=0.9854, lr=5.00e-04
+epoch 19/50: train_loss=0.0100, val_loss=0.0086, val_acc=0.9972, lr=5.00e-04
+epoch 20/50: train_loss=0.0099, val_loss=0.0090, val_acc=0.9974, lr=5.00e-04
+epoch 21/50: train_loss=0.0083, val_loss=0.0116, val_acc=0.9962, lr=5.00e-04
+epoch 22/50: train_loss=0.0194, val_loss=0.0391, val_acc=0.9834, lr=5.00e-04
+  reducing learning rate to 2.50e-04
+epoch 23/50: train_loss=0.0229, val_loss=0.0064, val_acc=0.9983, lr=2.50e-04
+epoch 24/50: train_loss=0.0070, val_loss=0.0060, val_acc=0.9984, lr=2.50e-04
+epoch 25/50: train_loss=0.0066, val_loss=0.0122, val_acc=0.9973, lr=2.50e-04
+epoch 26/50: train_loss=0.0065, val_loss=0.0065, val_acc=0.9980, lr=2.50e-04
+epoch 27/50: train_loss=0.0063, val_loss=0.0063, val_acc=0.9982, lr=2.50e-04
+  reducing learning rate to 1.25e-04
+epoch 28/50: train_loss=0.0055, val_loss=0.0063, val_acc=0.9983, lr=1.25e-04
+epoch 29/50: train_loss=0.0057, val_loss=0.0060, val_acc=0.9984, lr=1.25e-04
+  early stopping at epoch 29 (best epoch 24)
+
+Best epoch: 24, val_loss=0.0060, val_acc=0.9984
+
+=== Evaluating on test set (509534 samples) ===
+
+=== CNN+LSTM Test Results ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.9993     0.9987     0.9990
+DoS                      0.9948     0.9979     0.9964
+Probe                    0.9938     0.9995     0.9966
+R2L                      0.9897     0.9571     0.9731
+U2R                      0.0000     0.0000     0.0000
+----------------------------------------------------
+Macro avg                0.7955     0.7906     0.7930
+
+Accuracy : 0.9983
+FPR      : 0.0013
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal          408713       346       176        30         0
+DoS                139     68126         1         3         0
+Probe                4        10     28555         1         0
+R2L                147         0         0      3277         0
+U2R                  6         0         0         0         0
+
+Model saved to data/models/model-b/cnn_lstm_model.pt
+Scaler saved to data/models/model-b/scaler.json
+Report saved to data/models/model-b/evaluation_report.json
+
+Training complete in 3145.3s

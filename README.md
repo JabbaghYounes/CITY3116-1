@@ -17,24 +17,25 @@ A complete IDS/IPS prototype targeting industrial control systems, consisting of
 
 Detection uses three complementary models:
 - **Random Forest** (smartcore) — supervised, handles known attack patterns
+- **CNN+LSTM** (PyTorch) — deep learning, Conv1d→LSTM→FC, ~297K params
 - **Isolation Forest** — unsupervised anomaly detection for zero-days
-- **CNN+LSTM** (PyTorch) — deep learning, Conv1d→LSTM→FC, ~297K params (implemented, not yet trained)
 
-### Training Results (Random Forest + Isolation Forest)
+### Training Results
 
-| Model | Dataset | Features | Random Forest | Isolation Forest | RF + IForest | FPR |
-|-------|---------|----------|---------------|------------------|--------------|-----|
-| A | NSL-KDD (1999) | 122 | 67.26%\* | 77.24% | 67.26%\* | 0.0301 |
-| B | CIC-IDS2017 (2017) | 78 | **99.73%** | 81.37% | **99.73%** | **0.0006** |
-| C | UNSW-NB15 (2015) | 76 | 93.90% | 82.50% | 93.84% | 0.0251 |
-| D | Combined (A+B+C) | 276 | 97.80% | 80.20% | **97.82%** | 0.0043 |
+| Model | Dataset | Features | Random Forest | CNN+LSTM | Isolation Forest | RF + IForest | FPR |
+|-------|---------|----------|---------------|----------|------------------|--------------|-----|
+| A | NSL-KDD (1999) | 122 | 67.26%\* | 65.94%\* | 77.24% | 67.26%\* | 0.0301 |
+| B | CIC-IDS2017 (2017) | 78 | 99.73% | **99.83%** | 81.37% | 99.73% | **0.0006** |
+| C | UNSW-NB15 (2015) | 76 | 93.90% | 92.95% | 82.50% | 93.84% | 0.0251 |
+| D | Combined (A+B+C) | 276 | 97.80% | 97.67% | 80.20% | **97.82%** | 0.0043 |
 
 \*Model A metrics limited by NSL-KDD binary-only test labels (Probe/R2L/U2R collapsed)
 
 Key findings:
-- **Model B** achieves 99.73% with 0.06% FPR — best single-dataset result
-- **Model D** demonstrates cross-era generalisation at 97.80% across 276 zero-padded features
+- **CNN+LSTM achieves 99.83% on Model B** — highest accuracy across all methods
+- **Model D** demonstrates cross-era generalisation at 97.8% across 276 zero-padded features
 - **RF + IForest ensemble improves minority class detection** (Model D R2L recall: 0.75 → 0.82)
+- **Isolation Forest provides unsupervised baseline** at ~80% across all datasets
 - **U2R remains hardest** — extremely rare class across all datasets
 
 ## Quick Start

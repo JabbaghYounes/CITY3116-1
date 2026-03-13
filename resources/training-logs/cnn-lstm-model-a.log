@@ -1,0 +1,80 @@
+/home/vt/Downloads/CITY3116-1/cps-ids/pytorch-train/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py:125: UserWarning: Attempting to use hipBLASLt on an unsupported architecture! Overriding blas backend to hipblas (Triggered internally at ../aten/src/ATen/Context.cpp:296.)
+  return F.linear(input, self.weight, self.bias)
+[+] Using GPU: Radeon RX 7900 XT
+
+=== Loading Dataset ===
+Loading NSL-KDD training data from /home/vt/Downloads/CITY3116-1/NSL-KDD-Dataset/KDDTrain+.txt
+Loading NSL-KDD test data from /home/vt/Downloads/CITY3116-1/NSL-KDD-Dataset/KDDTest+.txt
+  parsed 125973 training, 22544 test records
+  one-hot widths: protocol=3, service=70, flag=11
+  dataset ready: train=103298, val=22675, test=22544, features=122
+Dataset: 103298 train, 22675 val, 22544 test, 122 features, 5 classes
+
+=== Normalizing ===
+
+=== SMOTE (target=55158) ===
+  SMOTE: class=1 current=37727 generating=17431
+  SMOTE: class=2 current=9568 generating=45590
+  SMOTE: class=3 current=803 generating=54355
+  SMOTE: class=4 current=42 generating=55116
+After SMOTE: 275790 samples
+
+=== Converting to tensors ===
+
+CNN+LSTM: 122 features, 5 classes, hidden=128, layers=2, dropout=0.3
+Total parameters: 298,117
+
+Training: 275790 samples, 539 batches/epoch, device=cuda
+
+epoch 1/50: train_loss=0.8918, val_loss=0.8674, val_acc=0.4489, lr=1.00e-03
+epoch 2/50: train_loss=0.6226, val_loss=0.4372, val_acc=0.8701, lr=1.00e-03
+epoch 3/50: train_loss=0.3622, val_loss=0.3293, val_acc=0.8990, lr=1.00e-03
+epoch 4/50: train_loss=0.2611, val_loss=0.3582, val_acc=0.8415, lr=1.00e-03
+epoch 5/50: train_loss=0.2604, val_loss=0.3974, val_acc=0.8360, lr=1.00e-03
+epoch 6/50: train_loss=0.1957, val_loss=0.3035, val_acc=0.9131, lr=1.00e-03
+epoch 7/50: train_loss=0.2379, val_loss=0.1651, val_acc=0.9480, lr=1.00e-03
+epoch 8/50: train_loss=0.1248, val_loss=0.2033, val_acc=0.9215, lr=1.00e-03
+epoch 9/50: train_loss=0.1068, val_loss=0.1266, val_acc=0.9581, lr=1.00e-03
+epoch 10/50: train_loss=0.0734, val_loss=0.0657, val_acc=0.9828, lr=1.00e-03
+epoch 11/50: train_loss=0.0693, val_loss=0.0957, val_acc=0.9772, lr=1.00e-03
+epoch 12/50: train_loss=0.0487, val_loss=0.0525, val_acc=0.9871, lr=1.00e-03
+epoch 13/50: train_loss=0.0397, val_loss=0.0725, val_acc=0.9825, lr=1.00e-03
+epoch 14/50: train_loss=0.0380, val_loss=0.0613, val_acc=0.9854, lr=1.00e-03
+epoch 15/50: train_loss=0.3002, val_loss=0.9240, val_acc=0.7004, lr=1.00e-03
+  reducing learning rate to 5.00e-04
+epoch 16/50: train_loss=0.5854, val_loss=0.3775, val_acc=0.8491, lr=5.00e-04
+epoch 17/50: train_loss=0.4347, val_loss=0.3492, val_acc=0.9051, lr=5.00e-04
+  early stopping at epoch 17 (best epoch 12)
+
+Best epoch: 12, val_loss=0.0525, val_acc=0.9871
+
+=== Evaluating on test set (22544 samples) ===
+
+=== CNN+LSTM Test Results ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   0.7530     0.9170     0.8269
+DoS                      0.9894     0.4645     0.6322
+Probe                    0.0000     0.0000     0.0000
+R2L                      0.0000     0.0000     0.0000
+U2R                      0.0000     0.0000     0.0000
+----------------------------------------------------
+Macro avg                0.3485     0.2763     0.2918
+
+Accuracy : 0.6594
+FPR      : 0.0830
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal            8905        64       724         6        12
+DoS               2921      5961      2931       621       399
+Probe                0         0         0         0         0
+R2L                  0         0         0         0         0
+U2R                  0         0         0         0         0
+
+Model saved to data/models/model-a/cnn_lstm_model.pt
+Scaler saved to data/models/model-a/scaler.json
+Report saved to data/models/model-a/evaluation_report.json
+
+Training complete in 752.7s

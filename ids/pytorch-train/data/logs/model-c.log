@@ -1,0 +1,73 @@
+/home/vt/Downloads/CITY3116-1/cps-ids/pytorch-train/.venv/lib/python3.12/site-packages/torch/nn/modules/linear.py:125: UserWarning: Attempting to use hipBLASLt on an unsupported architecture! Overriding blas backend to hipblas (Triggered internally at ../aten/src/ATen/Context.cpp:296.)
+  return F.linear(input, self.weight, self.bias)
+[+] Using GPU: Radeon RX 7900 XT
+
+=== Loading Dataset ===
+Loading UNSW-NB15 features from /home/vt/Downloads/CITY3116-1/CIC-UNSW-NB15-Dataset/Data.csv
+Loading UNSW-NB15 labels from /home/vt/Downloads/CITY3116-1/CIC-UNSW-NB15-Dataset/Label.csv
+  loaded 447915 UNSW-NB15 records
+UNSW-NB15 ready: train=313540, val=53750, test=80625, features=76
+Dataset: 313540 train, 53750 val, 80625 test, 76 features, 5 classes
+
+=== Normalizing ===
+
+=== SMOTE (target=250919) ===
+  SMOTE: class=1 current=6387 generating=244532
+  SMOTE: class=2 current=32645 generating=218274
+  SMOTE: class=3 current=21783 generating=229136
+  SMOTE: class=4 current=1806 generating=249113
+After SMOTE: 1254595 samples
+
+=== Converting to tensors ===
+
+CNN+LSTM: 76 features, 5 classes, hidden=128, layers=2, dropout=0.3
+Total parameters: 298,117
+
+Training: 1254595 samples, 2451 batches/epoch, device=cuda
+
+epoch 1/50: train_loss=0.8035, val_loss=0.2903, val_acc=0.9139, lr=1.00e-03
+epoch 2/50: train_loss=0.6841, val_loss=0.2945, val_acc=0.9086, lr=1.00e-03
+epoch 3/50: train_loss=0.6348, val_loss=0.2598, val_acc=0.9203, lr=1.00e-03
+epoch 4/50: train_loss=0.6111, val_loss=0.2463, val_acc=0.9251, lr=1.00e-03
+epoch 5/50: train_loss=0.5935, val_loss=0.2445, val_acc=0.9255, lr=1.00e-03
+epoch 6/50: train_loss=0.5750, val_loss=0.2389, val_acc=0.9292, lr=1.00e-03
+epoch 7/50: train_loss=0.5631, val_loss=0.3029, val_acc=0.9179, lr=1.00e-03
+epoch 8/50: train_loss=0.5512, val_loss=0.2417, val_acc=0.9276, lr=1.00e-03
+epoch 9/50: train_loss=0.5403, val_loss=0.3079, val_acc=0.9172, lr=1.00e-03
+  reducing learning rate to 5.00e-04
+epoch 10/50: train_loss=0.5082, val_loss=0.2489, val_acc=0.9280, lr=5.00e-04
+epoch 11/50: train_loss=0.4967, val_loss=0.2410, val_acc=0.9292, lr=5.00e-04
+  early stopping at epoch 11 (best epoch 6)
+
+Best epoch: 6, val_loss=0.2389, val_acc=0.9292
+
+=== Evaluating on test set (80625 samples) ===
+
+=== CNN+LSTM Test Results ===
+
+Class                 Precision     Recall         F1
+----------------------------------------------------
+Normal                   1.0000     0.9735     0.9866
+DoS                      0.5642     0.5882     0.5760
+Probe                    0.6997     0.8515     0.7682
+R2L                      0.8045     0.6710     0.7317
+U2R                      0.1945     0.5383     0.2857
+----------------------------------------------------
+Macro avg                0.6526     0.7245     0.6696
+
+Accuracy : 0.9295
+FPR      : 0.0265
+
+Confusion matrix (rows = true, cols = predicted):
+                Normal       DoS     Probe       R2L       U2R
+Normal           62742        75      1419       120        95
+DoS                  0       927       282       288        79
+Probe                0       180      7243       491       592
+R2L                  0       454      1247      3807       166
+U2R                  0         7       160        26       225
+
+Model saved to data/models/model-c/cnn_lstm_model.pt
+Scaler saved to data/models/model-c/scaler.json
+Report saved to data/models/model-c/evaluation_report.json
+
+Training complete in 842.2s
