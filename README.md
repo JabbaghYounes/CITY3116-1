@@ -99,7 +99,7 @@ Download and place at repo root (gitignored):
 
 ## Hardware
 
-- Arduino Mega 2560 (ELEGOO kit) — PLC 1
+- Arduino Mega 2560 — PLC 1
 - Arduino Uno Rev3 — PLC 2
 - W5500 Ethernet module — Modbus TCP
 - MAX485 RS-485 converter — Modbus RTU fieldbus
