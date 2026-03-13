@@ -87,41 +87,15 @@ python plant/attack.py
 python plant/stux/rootkit-proxy.py
 ```
 
-## Project Structure
-
-```
-├── ids/                        # IDS/IPS engine
-│   ├── crates/                 # Rust workspace (6 crates)
-│   │   ├── ids-common/         #   shared types, protocols
-│   │   ├── ids-collector/      #   packet capture, host monitoring
-│   │   ├── ids-preprocess/     #   dataset loaders, SMOTE, scaling
-│   │   ├── ids-engine/         #   RF, IForest, ensemble, training
-│   │   ├── ids-response/       #   alerting, SIEM export, blocking
-│   │   └── ids-dashboard/      #   web UI (axum)
-│   ├── parallel-train/         # Rayon multi-core trainer
-│   ├── cnn-lstm-train/         # tch-rs/libtorch GPU trainer
-│   ├── pytorch-train/          # Python PyTorch trainer (ROCm/CUDA)
-│   └── scripts/                # Setup scripts
-├── plant/                      # CPS testbed
-│   ├── arduino-plc-firmware.cpp    # PLC 1 (Mega) firmware
-│   ├── arduino-uno-sensor-node.cpp # PLC 2 (Uno) firmware
-│   ├── attack-framework.py     # Modbus TCP attack library
-│   ├── attack.py               # Attack CLI
-│   ├── stux/                   # Stuxnet-style rootkit
-│   └── simulation/             # MiniCPS + Mininet software twin
-├── writeup/                    # Assignment report
-└── resources/                  # Planning docs, training logs
-```
-
 ## Datasets
 
 Download and place at repo root (gitignored):
 
-```
-NSL-KDD-Dataset/KDDTrain+.txt, KDDTest+.txt
-CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/*.csv
-CIC-UNSW-NB15-Dataset/Data.csv, Label.csv
-```
+| Dataset | Source | Local Path |
+|---------|--------|------------|
+| NSL-KDD | [Zenodo Archive](https://zenodo.org/records/17424143) | `NSL-KDD-Dataset/KDDTrain+.txt, KDDTest+.txt` |
+| CIC-IDS2017 | [UNB CIC](https://www.unb.ca/cic/datasets/ids-2017.html) | `CIC-IDS2017-Dataset/CSVs/MachineLearningCSV/MachineLearningCVE/*.csv` |
+| UNSW-NB15 | [UNB CIC](https://www.unb.ca/cic/datasets/cic-unsw-nb15.html) | `CIC-UNSW-NB15-Dataset/Data.csv, Label.csv` |
 
 ## Hardware
 
