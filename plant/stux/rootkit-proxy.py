@@ -88,7 +88,7 @@ async def telemetry_monitor():
 
     while True:
 
-        rr = rootkit.client.read_holding_registers(0,2)
+        rr = rootkit.client.read_holding_registers(0, count=2)
 
         if rr:
 

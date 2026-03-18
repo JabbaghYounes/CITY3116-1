@@ -82,6 +82,8 @@ CPS environments present unique security challenges distinct from traditional IT
 
 **Intrusion Prevention Systems (IPS)** extend IDS capabilities by actively blocking or preventing detected threats. IPS sits inline with network traffic, enabling real-time intervention when malicious activity is identified.
 
+In the context of CPS, IDS is the more appropriate choice due to the importance of availability within the CIA triad. CPS environments demand uninterrupted communication between controllers and field devices; an IPS operating inline would drop packets deemed suspicious, potentially disrupting the constant availability required for safe physical process control. A false positive in an IPS could halt a pump, close a valve, or sever a control loop — consequences far more severe than in traditional IT networks. IDS, by contrast, monitors passively and raises alerts without interrupting the data flow, preserving the operational continuity that CPS demands.
+
 **Classification by Deployment:**
 - **Network-based IDS/IPS (NIDS/NIPS):** Monitors network traffic at strategic points, analysing packet headers and payloads for attack signatures or anomalies.
 - **Host-based IDS/IPS (HIDS/HIPS):** Monitors activities on individual hosts, including system calls, file modifications, and application behaviour.
@@ -93,36 +95,39 @@ CPS environments present unique security challenges distinct from traditional IT
 
 ### 2.2 System Design for CPS Security
 
-The proposed AI/ML-driven IDS/IPS for CPS security employs a hybrid architecture combining signature-based and anomaly-based detection methods, enhanced with machine learning capabilities.
+The proposed AI/ML-driven IDS for CPS security employs a hybrid architecture combining signature-based and anomaly-based detection methods, enhanced with machine learning capabilities.
+
+**Implementation Language:**
+
+The choice of implementation language is driven by the technical demands of intrusion detection: high-throughput packet processing, low-latency analysis, concurrency for simultaneous network and host monitoring, and robust networking pipelines. Additionally, given the safety-critical nature of CPS, memory safety is essential — a buffer overflow in the IDS itself could become an attack vector. Rust satisfies all of these requirements: it delivers performance comparable to C/C++ while providing compile-time memory safety guarantees through its ownership model, eliminating entire classes of vulnerabilities (use-after-free, data races, buffer overflows) without runtime overhead.
 
 **System Architecture Components:**
 
 1. **Data Collection Module:**
-   - Network traffic capture using packet sniffing techniques
+   - Network traffic capture using packet sniffing techniques (libpcap)
    - Protocol-specific parsers for Modbus, DNP3, and OPC UA
    - System log aggregation from PLCs, RTUs, and HMIs
-   - Sensor data stream ingestion
+   - Host-based monitoring: file integrity (inotify), process monitoring, syscall tracing
 
 2. **Preprocessing Pipeline:**
    - Packet reassembly and flow reconstruction
    - Feature extraction (packet size, inter-arrival times, protocol fields)
-   - Data normalisation and encoding
+   - Data normalisation (MinMax scaling) and one-hot encoding
    - Handling of imbalanced datasets through SMOTE (Synthetic Minority Over-sampling Technique)
 
 3. **Detection Engine:**
-   - Rule-based detection for known CPS-specific attacks
+   - Rule-based detection for known CPS-specific attacks (Modbus function code validation, register range whitelisting)
    - ML-based anomaly detection for unknown threats
-   - Ensemble approach combining multiple classifiers
+   - Ensemble approach combining multiple classifiers with weighted fusion
 
 4. **Response Module:**
    - Alert generation and prioritisation
-   - Automated blocking of malicious traffic (IPS mode)
-   - Integration with SIEM (Security Information and Event Management) systems
+   - Configurable IDS/IPS mode with automated network blocking and host response capabilities
+   - Integration with SIEM (Security Information and Event Management) systems via CEF/syslog export
 
 5. **Management Interface:**
    - Dashboard for real-time monitoring
    - Rule configuration and model retraining capabilities
-   - Incident investigation tools
 
 **CPS-Specific Design Considerations:**
 - Protocol awareness for industrial protocols (Modbus function code validation)
@@ -134,13 +139,15 @@ The proposed AI/ML-driven IDS/IPS for CPS security employs a hybrid architecture
 
 **Dataset Selection:**
 
-The system utilises a combination of datasets to ensure comprehensive coverage:
+The system utilises a combination of three public intrusion detection datasets to ensure comprehensive coverage across different eras and attack types:
 
-1. **NSL-KDD:** An improved version of the KDD Cup 1999 dataset, addressing issues of redundant records. Contains 41 features per connection record with labels for normal traffic and various attack categories (DoS, Probe, R2L, U2R).
+1. **NSL-KDD (1999):** An improved version of the KDD Cup 1999 dataset, addressing issues of redundant records. Contains 41 features per connection record (expanded to 122 after one-hot encoding of 3 categorical columns) with labels for normal traffic and various attack categories (DoS, Probe, R2L, U2R).
 
-2. **CICIDS2017/2018:** Modern datasets containing contemporary attack traffic including DDoS, brute force, web attacks, and infiltration. Provides realistic benign background traffic and labelled attack flows.
+2. **CIC-IDS2017 (2017):** A modern dataset containing contemporary attack traffic including DDoS, brute force, web attacks, and infiltration. Provides realistic benign background traffic and labelled attack flows across 78 numeric features.
 
-3. **UNSW-NB15:** A comprehensive dataset from UNSW Canberra containing 448K records across 76 numeric features, with 10 attack categories mapped to the unified 5-class scheme. Provides coverage of modern mixed attack types including backdoors, shellcode, and worms.
+3. **UNSW-NB15 (2015):** A comprehensive dataset from UNSW Canberra containing 448K records across 76 numeric features, with 10 attack categories mapped to the unified 5-class scheme. Provides coverage of modern mixed attack types including backdoors, shellcode, and worms.
+
+All three datasets are mapped to a unified 5-class label scheme (Normal, DoS, Probe, R2L, U2R) enabling cross-dataset training and evaluation.
 
 **Feature Engineering:**
 
@@ -174,21 +181,20 @@ A multi-model ensemble approach is employed:
 - rayon for parallelised training across 16+ CPU cores
 - Custom rule-based detection engine for known CPS-specific attack signatures
 
-**Implementation Scope Beyond Proposed Architecture:**
+**Implementation Scope:**
 
-The implementation significantly exceeds the initially proposed minimal pipeline (passive CSV ingestion → single Random Forest → binary detection). The final system is a hybrid NIDS+HIDS with:
-- Live packet capture with ICS/SCADA protocol parsing (Modbus, DNP3, OPC-UA) — not just flow-level CSV ingestion
+The final system significantly exceeds the initially proposed minimal pipeline (passive CSV ingestion → single Random Forest → binary detection). It is a hybrid NIDS+HIDS with:
+- Live packet capture with ICS/SCADA protocol parsing (Modbus, DNP3, OPC-UA)
 - Host-based monitoring: file integrity (inotify), process monitoring, syscall tracing, log watching
-- Multi-model ensemble (RF + CNN+LSTM + Isolation Forest) with weighted fusion — not a single classifier
-- Multi-dataset cross-era training across three datasets (NSL-KDD 1999, UNSW-NB15 2015, CIC-IDS2017 2017) with a unified 5-class label scheme and a combined generalisation model
-- Configurable IDS/IPS mode with automated network blocking and host response capabilities
-- Four independent training backends (single-threaded Rust, parallel Rust, GPU Rust/libtorch, GPU Python/PyTorch) enabling fair comparison between traditional ML and deep learning approaches
+- Multi-model ensemble (RF + CNN+LSTM + Isolation Forest) with weighted fusion
+- Multi-dataset cross-era training across three datasets (1999–2017) with a unified 5-class label scheme and a combined generalisation model (Model D, 276 zero-padded features)
+- Four independent training backends (single-threaded Rust, parallel Rust, GPU Rust/libtorch, GPU Python/PyTorch)
 
 ### 2.4 Evaluation and Comparison
 
 **Performance Metrics:**
 
-The ML-based IDS/IPS is evaluated using standard classification metrics:
+The ML-based IDS is evaluated using standard classification metrics:
 
 | Metric | Formula | Interpretation |
 |--------|---------|----------------|
@@ -198,18 +204,23 @@ The ML-based IDS/IPS is evaluated using standard classification metrics:
 | F1-Score | 2×(Precision×Recall)/(Precision+Recall) | Harmonic mean balancing precision and recall |
 | False Positive Rate | FP/(FP+TN) | Rate of benign traffic flagged as malicious |
 
-**Actual Training Results (Random Forest, 5-class):**
+**Training Results (5-class classification):**
 
-| Model | Dataset | Accuracy | Macro-F1 | FPR |
-|-------|---------|----------|----------|-----|
-| A | NSL-KDD | 67.3%* | 0.2809* | 0.0301 |
-| B | CIC-IDS2017 | **99.73%** | 0.9534 | 0.0006 |
-| C | UNSW-NB15 | 93.9% | 0.7068 | 0.0251 |
-| D | Combined (A+B+C) | 97.8% | 0.7591 | 0.0043 |
+| Model | Dataset | Features | Random Forest | CNN+LSTM | Isolation Forest | RF + IForest | FPR |
+|-------|---------|----------|---------------|----------|------------------|--------------|-----|
+| A | NSL-KDD (1999) | 122 | 67.26%* | 65.94%* | 77.24% | 67.26%* | 0.0301 |
+| B | CIC-IDS2017 (2017) | 78 | 99.73% | **99.83%** | 81.37% | 99.73% | **0.0006** |
+| C | UNSW-NB15 (2015) | 76 | 93.90% | 92.95% | 82.50% | 93.84% | 0.0251 |
+| D | Combined (A+B+C) | 276 | 97.80% | 97.67% | 80.20% | **97.82%** | 0.0043 |
 
-*Model A metrics are artificially limited by binary-only test labels in the NSL-KDD test set (all attacks mapped to a single class).
+*Model A metrics are artificially limited by binary-only test labels in the NSL-KDD test set (Probe/R2L/U2R collapsed to a single attack class).
 
-Model B (CIC-IDS2017) achieves near-perfect detection with 99.73% accuracy and an FPR of just 0.06%, demonstrating that the Random Forest classifier with modern flow-level features can effectively distinguish between normal traffic and multiple attack categories. Model D (Combined) demonstrates cross-dataset generalisation at 97.8% accuracy using zero-padded feature union across all three datasets spanning 1999–2017.
+Key findings:
+- **CNN+LSTM achieves 99.83% on Model B** — the highest accuracy across all methods
+- **Model D** demonstrates cross-era generalisation at 97.8% across 276 zero-padded features spanning datasets from 1999 to 2017
+- **RF + IForest ensemble improves minority class detection** (Model D R2L recall: 0.75 → 0.82)
+- **Isolation Forest provides unsupervised baseline** at ~80% across all datasets, detecting anomalies without labelled training data
+- **U2R remains the hardest class** — extremely rare across all datasets
 
 **Comparison with Rule-Based Approaches:**
 
@@ -249,7 +260,7 @@ The implemented ML-based ensemble demonstrates:
 
 5. **Real-time Constraints:** Complex models may introduce latency incompatible with time-critical CPS operations.
 
-6. **False Positives in Operational Environments:** Anomaly detection may flag legitimate but infrequent operations as suspicious.
+6. **False Positives in Operational Environments:** Anomaly detection may flag legitimate but infrequent operations as suspicious, and in CPS the cost of a false positive (operator fatigue, ignored alerts) is higher than in IT networks.
 
 ---
 
@@ -257,7 +268,7 @@ The implemented ML-based ensemble demonstrates:
 
 ### 3.1 Attack Scenarios
 
-The forensic investigation examines three simulated attack scenarios targeting the CPS environment:
+The forensic investigation examines three simulated attack scenarios targeting the CPS environment — a water treatment plant testbed built with Arduino PLCs communicating over Modbus RTU/TCP:
 
 **Scenario 1: Man-in-the-Middle (MITM) Attack**
 
@@ -266,12 +277,15 @@ An attacker positions themselves between a SCADA master station and field PLCs, 
 - Inject malicious commands to actuators
 - Record operational data for reconnaissance
 
+This scenario is implemented as a Stuxnet-style async MitM proxy that operates in intermittent attack cycles (20-second intervals, 8-second active duration), manipulating actuator commands while falsifying sensor readings sent back to the SCADA system — making the attack difficult to detect through casual monitoring.
+
 **Scenario 2: Denial of Service (DoS) Attack**
 
 A volumetric attack floods the CPS network with traffic, overwhelming communication channels between control systems and field devices. Techniques include:
 - SYN flood attacks against Modbus TCP servers
 - Amplification attacks exploiting broadcast protocols
 - Application-layer attacks targeting HMI web interfaces
+- Modbus function code flooding to exhaust PLC connection tables
 
 **Scenario 3: Ransomware Infection**
 
@@ -284,9 +298,9 @@ Ransomware infiltrates the CPS environment through phishing or supply chain comp
 
 **Tools Employed:**
 
-1. **Wireshark:** Network protocol analyser for capturing and examining packet-level traffic. Used to identify anomalous communication patterns, extract malicious payloads, and reconstruct attack timelines.
+1. **Wireshark:** Network protocol analyser for capturing and examining packet-level traffic. Used to identify anomalous communication patterns in Modbus TCP traffic, extract malicious payloads, and reconstruct attack timelines.
 
-2. **Snort:** Network IDS configured in logging mode to generate alerts and capture traffic matching attack signatures. Provides corroborating evidence of intrusion activities.
+2. **Snort:** Open-source network IDS/IPS configured in logging mode to generate alerts and capture traffic matching attack signatures. When configured in NIDS mode, Snort can alert on activities such as host discovery and port scanning. Provides corroborating evidence of intrusion activities.
 
 3. **Volatility:** Memory forensics framework for analysing RAM dumps from compromised systems. Used to identify malware processes, extract encryption keys, and recover artefacts unavailable on disk.
 
@@ -296,9 +310,9 @@ Ransomware infiltrates the CPS environment through phishing or supply chain comp
 
 **Forensic Methodology:**
 
-The investigation follows the NIST SP 800-86 guidelines:
+The investigation follows the NIST SP 800-86 guidelines for integrating forensic techniques into incident response:
 
-1. **Collection:** Acquire volatile data (memory, network connections) before non-volatile data (disk images). Maintain chain of custody documentation.
+1. **Collection:** Acquire volatile data (memory, network connections) before non-volatile data (disk images). Maintain chain of custody documentation. Live acquisition captures running processes and network state; dead acquisition captures disk images bit-for-bit preserving slack space and deleted file remnants.
 
 2. **Examination:** Apply forensic tools to extract relevant data from collected evidence.
 
@@ -413,7 +427,7 @@ The CPS environment experienced a multi-vector attack comprising MITM intercepti
 4. Implement endpoint detection and response (EDR) on engineering workstations
 5. Conduct regular security awareness training
 6. Establish offline backup procedures for critical configurations
-7. Deploy the AI/ML-based IDS/IPS system for continuous monitoring
+7. Deploy the AI/ML-based IDS system for continuous monitoring
 
 ---
 
@@ -423,7 +437,7 @@ The CPS environment experienced a multi-vector attack comprising MITM intercepti
 
 The following controls from ISO 27001:2022 are recommended:
 - **A.8.20 Networks security:** Implement network segmentation and filtering
-- **A.8.16 Monitoring activities:** Deploy continuous monitoring through the proposed IDS/IPS
+- **A.8.16 Monitoring activities:** Deploy continuous monitoring through the proposed IDS
 - **A.5.24 Information security incident management:** Establish incident response procedures
 - **A.8.7 Protection against malware:** Deploy endpoint protection on CPS components
 
@@ -436,7 +450,7 @@ Address OWASP Top 10 vulnerabilities relevant to CPS web interfaces:
 - **A05:2021 Security Misconfiguration:** Harden default configurations on CPS devices
 
 **CPS-Specific Recommendations:**
-- Implement defense-in-depth with multiple security layers
+- Implement defence-in-depth with multiple security layers
 - Deploy protocol-aware security controls understanding industrial protocols
 - Establish security monitoring that accounts for OT-specific traffic patterns
 - Conduct regular vulnerability assessments of CPS components
@@ -446,7 +460,9 @@ Address OWASP Top 10 vulnerabilities relevant to CPS web interfaces:
 
 ## Conclusion
 
-This report presented the design of an AI/ML-driven Intrusion Detection and Prevention System tailored for Cyber-Physical Systems security. The proposed system combines traditional signature-based detection with machine learning anomaly detection, demonstrating improved detection rates compared to rule-based approaches alone. The forensic investigation of simulated MITM, DoS, and ransomware attacks illustrated the application of established forensic methodologies and tools, enhanced by AI/ML techniques for malware classification and log analysis. The integration of intelligent security monitoring with robust forensic capabilities provides a comprehensive approach to protecting critical CPS infrastructure against evolving cyber threats.
+This report presented the design of an AI/ML-driven Intrusion Detection System tailored for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines traditional signature-based detection with a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017.
+
+The forensic investigation of simulated MITM, DoS, and ransomware attacks — conducted against an Arduino-based water treatment plant testbed communicating over Modbus RTU/TCP — demonstrated the application of established forensic methodologies (NIST SP 800-86) and tools (Wireshark, Volatility, Autopsy), enhanced by AI/ML techniques for malware classification and log analysis. The integration of intelligent security monitoring with robust forensic capabilities provides a comprehensive approach to protecting critical CPS infrastructure against evolving cyber threats.
 
 ---
 
@@ -454,23 +470,27 @@ This report presented the design of an AI/ML-driven Intrusion Detection and Prev
 
 1. NIST. (2006). *Guide to Integrating Forensic Techniques into Incident Response* (SP 800-86). National Institute of Standards and Technology.
 
-2. Tavallaee, M., Bagheri, E., Lu, W., & Ghorbani, A. A. (2009). A detailed analysis of the KDD CUP 99 data set. *IEEE Symposium on Computational Intelligence for Security and Defense Applications*.
+2. NIST. (2015). *Guide to Industrial Control Systems (ICS) Security* (SP 800-82 Rev. 2). National Institute of Standards and Technology.
 
-3. Sharafaldin, I., Lashkari, A. H., & Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. *ICISSP*.
+3. Tavallaee, M., Bagheri, E., Lu, W., & Ghorbani, A. A. (2009). A detailed analysis of the KDD CUP 99 data set. *IEEE Symposium on Computational Intelligence for Security and Defense Applications*.
 
-4. Modbus Organization. (2012). *MODBUS Application Protocol Specification V1.1b3*.
+4. Sharafaldin, I., Lashkari, A. H., & Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. *ICISSP*.
 
-5. OWASP Foundation. (2021). *OWASP Top 10:2021*. https://owasp.org/Top10/
+5. Moustafa, N., & Slay, J. (2015). UNSW-NB15: A comprehensive data set for network intrusion detection systems. *Military Communications and Information Systems Conference (MilCIS)*.
 
-6. ISO/IEC. (2022). *ISO/IEC 27001:2022 Information security management systems*.
+6. Modbus Organization. (2012). *MODBUS Application Protocol Specification V1.1b3*.
 
-7. Anthi, E., Williams, L., Slowinska, M., Sherwood, G., & Sherwood, G. (2019). A Supervised Intrusion Detection System for Smart Home IoT Devices. *IEEE Internet of Things Journal*.
+7. OWASP Foundation. (2021). *OWASP Top 10:2021*. https://owasp.org/Top10/
 
-8. Roesch, M. (1999). Snort - Lightweight Intrusion Detection for Networks. *LISA*.
+8. ISO/IEC. (2022). *ISO/IEC 27001:2022 Information security management systems*.
 
-9. Volatility Foundation. (2023). *Volatility 3 Framework*. https://www.volatilityfoundation.org/
+9. Anthi, E., Williams, L., Slowinska, M., Sherwood, G., & Sherwood, G. (2019). A Supervised Intrusion Detection System for Smart Home IoT Devices. *IEEE Internet of Things Journal*.
 
-10. Wireshark Foundation. (2023). *Wireshark User's Guide*. https://www.wireshark.org/docs/
+10. Roesch, M. (1999). Snort - Lightweight Intrusion Detection for Networks. *LISA*.
+
+11. Volatility Foundation. (2023). *Volatility 3 Framework*. https://www.volatilityfoundation.org/
+
+12. Wireshark Foundation. (2023). *Wireshark User's Guide*. https://www.wireshark.org/docs/
 
 ---
 

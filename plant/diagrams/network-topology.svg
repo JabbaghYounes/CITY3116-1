@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" font-family="Consolas, monospace" font-size="12">
+  <title>CPS Plant Network Topology — Full System</title>
+  <defs>
+    <marker id="ar" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#333"/></marker>
+    <marker id="ar-r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#dc2626"/></marker>
+    <marker id="ar-b" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/></marker>
+    <marker id="ar-g" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#16a34a"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="500" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a1a">CPS Plant — Full System Topology</text>
+  <text x="500" y="46" text-anchor="middle" font-size="11" fill="#666">Purdue Model Levels 0–3</text>
+
+  <!--  LEVEL 3 — SUPERVISION-->
+  <rect x="20" y="60" width="960" height="130" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1" stroke-dasharray="6"/>
+  <text x="40" y="80" font-size="11" font-weight="bold" fill="#1e40af">Level 3 — Supervision / Enterprise</text>
+
+  <!-- PC -->
+  <rect x="320" y="90" width="360" height="85" rx="10" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="500" y="115" text-anchor="middle" font-size="14" font-weight="bold" fill="white">PC / Laptop</text>
+  <text x="500" y="133" text-anchor="middle" font-size="10" fill="#bfdbfe">192.168.1.10 (static)</text>
+
+  <g font-size="10" fill="#dbeafe">
+    <text x="340" y="158">SCADA Dashboard</text>
+    <text x="480" y="158">IDS Engine (ids/)</text>
+    <text x="590" y="158">Attack Tools</text>
+  </g>
+  <text x="428" y="158" font-size="10" fill="#dbeafe">|</text>
+  <text x="580" y="158" font-size="10" fill="#dbeafe">|</text>
+
+  <!--  LEVEL 2 — PLANT NETWORK-->
+  <rect x="20" y="200" width="960" height="110" rx="8" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1" stroke-dasharray="6"/>
+  <text x="40" y="220" font-size="11" font-weight="bold" fill="#166534">Level 2 — Plant Network</text>
+
+  <!-- Switch -->
+  <rect x="350" y="235" width="300" height="60" rx="8" fill="#22c55e" stroke="#16a34a" stroke-width="2"/>
+  <text x="500" y="258" text-anchor="middle" font-size="14" font-weight="bold" fill="white">TP-Link LS1005G Switch</text>
+  <text x="500" y="278" text-anchor="middle" font-size="10" fill="#dcfce7">5-Port Gigabit | Ports 3-5 free</text>
+
+  <!-- Port labels -->
+  <rect x="380" y="275" width="50" height="16" rx="3" fill="#15803d"/><text x="405" y="287" text-anchor="middle" font-size="8" fill="white">Port 1</text>
+  <rect x="475" y="275" width="50" height="16" rx="3" fill="#15803d"/><text x="500" y="287" text-anchor="middle" font-size="8" fill="white">Port 2</text>
+
+  <!-- Ethernet cable: PC → Switch -->
+  <line x1="500" y1="175" x2="500" y2="235" stroke="#2563eb" stroke-width="3" marker-end="url(#ar-b)"/>
+  <text x="510" y="210" font-size="9" fill="#2563eb">Ethernet (RJ45)</text>
+
+  <!--  LEVEL 1 — CONTROLLERS-->
+  <rect x="20" y="320" width="960" height="180" rx="8" fill="#fefce8" stroke="#fef08a" stroke-width="1" stroke-dasharray="6"/>
+  <text x="40" y="340" font-size="11" font-weight="bold" fill="#854d0e">Level 1 — Controllers</text>
+
+  <!-- PLC 1 -->
+  <rect x="100" y="355" width="350" height="130" rx="10" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="275" y="380" text-anchor="middle" font-size="14" font-weight="bold" fill="white">PLC 1 — Arduino Mega 2560</text>
+  <text x="275" y="398" text-anchor="middle" font-size="10" fill="#93c5fd">192.168.1.20 : 502 (Modbus TCP)</text>
+  <text x="275" y="416" text-anchor="middle" font-size="10" fill="#93c5fd">Modbus RTU Master</text>
+
+  <g font-size="9" fill="#bfdbfe">
+    <text x="120" y="440">W5500 Ethernet</text>
+    <text x="120" y="455">MAX485 RS-485</text>
+    <text x="120" y="470">RFID (MFRC522)</text>
+    <text x="280" y="440">Pump Relay (D8)</text>
+    <text x="280" y="455">Servo Valve (D9)</text>
+    <text x="280" y="470">Buzzer/LCD HMI</text>
+  </g>
+
+  <!-- PLC 2 -->
+  <rect x="560" y="355" width="350" height="130" rx="10" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="735" y="380" text-anchor="middle" font-size="14" font-weight="bold" fill="white">PLC 2 — Arduino Uno Rev3</text>
+  <text x="735" y="398" text-anchor="middle" font-size="10" fill="#93c5fd">Modbus RTU Slave (ID 1)</text>
+  <text x="735" y="416" text-anchor="middle" font-size="10" fill="#93c5fd">No IP — accessed via PLC 1</text>
+
+  <g font-size="9" fill="#bfdbfe">
+    <text x="580" y="440">MAX485 RS-485</text>
+    <text x="580" y="455">Ultrasonic (D6/D7)</text>
+    <text x="580" y="470">Water level (A0)</text>
+    <text x="740" y="440">Temperature (A1)</text>
+    <text x="740" y="455">Sound (A2)</text>
+    <text x="740" y="470">Motion PIR (D3)</text>
+  </g>
+
+  <!-- Ethernet: Switch → PLC 1 -->
+  <line x1="405" y1="291" x2="275" y2="355" stroke="#2563eb" stroke-width="3" marker-end="url(#ar-b)"/>
+  <text x="310" y="318" font-size="9" fill="#2563eb">Ethernet</text>
+  <text x="295" y="332" font-size="9" fill="#2563eb">Modbus TCP</text>
+
+  <!-- RS-485: PLC 1 ↔ PLC 2 -->
+  <line x1="450" y1="420" x2="560" y2="420" stroke="#ca8a04" stroke-width="4"/>
+  <rect x="470" y="405" width="70" height="30" rx="5" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/>
+  <text x="505" y="418" text-anchor="middle" font-size="8" font-weight="bold" fill="#854d0e">RS-485</text>
+  <text x="505" y="430" text-anchor="middle" font-size="8" fill="#a16207">9600 baud</text>
+
+  <!--  LEVEL 0 — PHYSICAL PROCESS-->
+  <rect x="20" y="510" width="960" height="170" rx="8" fill="#fef2f2" stroke="#fecaca" stroke-width="1" stroke-dasharray="6"/>
+  <text x="40" y="530" font-size="11" font-weight="bold" fill="#991b1b">Level 0 — Physical Process (Water Treatment Plant)</text>
+
+  <!-- Actuators box -->
+  <rect x="100" y="545" width="250" height="120" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+  <text x="225" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">Actuators</text>
+  <text x="225" y="582" text-anchor="middle" font-size="9" fill="#be185d">Controlled by PLC 1</text>
+
+  <g font-size="10" fill="#9d174d">
+    <text x="120" y="605">Relay → Pump motor</text>
+    <text x="120" y="622">Servo → Valve (0-180°)</text>
+    <text x="120" y="639">Buzzer → Alarm system</text>
+    <text x="120" y="656">LCD → Operator display</text>
+  </g>
+
+  <!-- Sensors box -->
+  <rect x="560" y="545" width="350" height="120" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="735" y="567" text-anchor="middle" font-size="13" font-weight="bold" fill="#166534">Sensors</text>
+  <text x="735" y="582" text-anchor="middle" font-size="9" fill="#15803d">Read by PLC 2</text>
+
+  <g font-size="10" fill="#166534">
+    <text x="580" y="605">HC-SR04 → Tank level (cm)</text>
+    <text x="580" y="622">Thermistor → Coolant temp</text>
+    <text x="580" y="639">Sound module → Vibration</text>
+    <text x="580" y="656">PIR → Facility intrusion</text>
+    <text x="780" y="605">Water level → Float switch</text>
+  </g>
+
+  <!-- Wires: PLC 1 → Actuators -->
+  <line x1="225" y1="485" x2="225" y2="545" stroke="#ec4899" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="235" y="520" font-size="9" fill="#ec4899">Digital I/O</text>
+
+  <!-- Wires: PLC 2 → Sensors -->
+  <line x1="735" y1="485" x2="735" y2="545" stroke="#16a34a" stroke-width="2" marker-end="url(#ar-g)"/>
+  <text x="745" y="520" font-size="9" fill="#16a34a">Analog/Digital</text>
+
+  <!--  DATA FLOW ARROW-->
+  <rect x="370" y="505" width="260" height="35" rx="6" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="500" y="518" text-anchor="middle" font-size="9" fill="#333" font-weight="bold">DATA FLOW</text>
+  <text x="500" y="532" text-anchor="middle" font-size="8" fill="#666">Sensors → PLC2 → RS485 → PLC1 → Ethernet → SCADA</text>
+
+  <!--  PROCESS DIAGRAM-->
+  <rect x="385" y="580" width="140" height="75" rx="8" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="455" y="600" text-anchor="middle" font-size="11" font-weight="bold" fill="#92400e">Water Tank</text>
+  <text x="455" y="618" text-anchor="middle" font-size="9" fill="#b45309">Pump ON: tank &lt; 30%</text>
+  <text x="455" y="633" text-anchor="middle" font-size="9" fill="#b45309">Pump OFF: tank &gt; 85%</text>
+  <text x="455" y="648" text-anchor="middle" font-size="9" fill="#b45309">Valve: 120°/40°</text>
+
+  <!-- Connect tank to actuators/sensors -->
+  <line x1="385" y1="617" x2="350" y2="617" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4"/>
+  <line x1="525" y1="617" x2="560" y2="617" stroke="#d97706" stroke-width="1.5" stroke-dasharray="4"/>
+</svg>

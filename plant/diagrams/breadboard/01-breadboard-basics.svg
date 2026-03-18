@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 700" font-family="Consolas, monospace" font-size="12">
+  <title>How a Breadboard Works (Vertical Layout)</title>
+
+  <rect width="950" height="700" fill="#fafafa" rx="8"/>
+
+  <text x="475" y="28" text-anchor="middle" font-size="18" font-weight="bold">How Your Breadboard Works</text>
+  <text x="475" y="46" text-anchor="middle" font-size="11" fill="#666">Vertical orientation, 64 rows, power rails on both sides</text>
+
+  <!-- BREADBOARD -->
+  <rect x="120" y="70" width="400" height="540" rx="8" fill="#f5f0e0" stroke="#c9b97a" stroke-width="2"/>
+
+  <!-- LEFT power rails -->
+  <rect x="130" y="85" width="12" height="510" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+  <text x="136" y="80" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">+</text>
+  <rect x="146" y="85" width="12" height="510" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+  <text x="152" y="80" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="bold">-</text>
+
+  <!-- RIGHT power rails -->
+  <rect x="482" y="85" width="12" height="510" rx="3" fill="#dbeafe" stroke="#2563eb" stroke-width="1"/>
+  <text x="488" y="80" text-anchor="middle" font-size="10" fill="#2563eb" font-weight="bold">-</text>
+  <rect x="498" y="85" width="12" height="510" rx="3" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/>
+  <text x="504" y="80" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">+</text>
+
+  <!-- Column labels (a-e left half, f-j right half) -->
+  <g font-size="10" fill="#666" font-weight="bold">
+    <text x="180" y="97" text-anchor="middle">a</text>
+    <text x="210" y="97" text-anchor="middle">b</text>
+    <text x="240" y="97" text-anchor="middle">c</text>
+    <text x="270" y="97" text-anchor="middle">d</text>
+    <text x="300" y="97" text-anchor="middle">e</text>
+
+    <text x="340" y="97" text-anchor="middle">f</text>
+    <text x="370" y="97" text-anchor="middle">g</text>
+    <text x="400" y="97" text-anchor="middle">h</text>
+    <text x="430" y="97" text-anchor="middle">i</text>
+    <text x="460" y="97" text-anchor="middle">j</text>
+  </g>
+
+  <!-- Center gap (vertical, between e and f) -->
+  <rect x="312" y="100" width="16" height="495" rx="2" fill="#e8e0c8"/>
+
+  <!-- Row numbers (going down) -->
+  <g font-size="8" fill="#999">
+    <text x="168" y="115" text-anchor="end">1</text>
+    <text x="168" y="130" text-anchor="end">2</text>
+    <text x="168" y="145" text-anchor="end">3</text>
+    <text x="168" y="160" text-anchor="end">4</text>
+    <text x="168" y="175" text-anchor="end">5</text>
+    <text x="168" y="190" text-anchor="end">6</text>
+    <text x="168" y="205" text-anchor="end">7</text>
+    <text x="168" y="220" text-anchor="end">8</text>
+    <text x="168" y="235" text-anchor="end">9</text>
+    <text x="168" y="250" text-anchor="end">10</text>
+    <text x="168" y="310" text-anchor="end">14</text>
+    <text x="168" y="370" text-anchor="end">18</text>
+    <text x="168" y="430" text-anchor="end">22</text>
+    <text x="168" y="490" text-anchor="end">26</text>
+    <text x="168" y="550" text-anchor="end">30</text>
+    <text x="168" y="580" text-anchor="end">...</text>
+    <text x="168" y="595" text-anchor="end">64</text>
+  </g>
+
+  <!-- Example holes left half (a-e) -->
+  <g fill="#888">
+    <!-- Row 1 -->
+    <circle cx="180" cy="112" r="2.5"/><circle cx="210" cy="112" r="2.5"/><circle cx="240" cy="112" r="2.5"/><circle cx="270" cy="112" r="2.5"/><circle cx="300" cy="112" r="2.5"/>
+    <!-- Row 2 -->
+    <circle cx="180" cy="127" r="2.5"/><circle cx="210" cy="127" r="2.5"/><circle cx="240" cy="127" r="2.5"/><circle cx="270" cy="127" r="2.5"/><circle cx="300" cy="127" r="2.5"/>
+    <!-- Row 3 -->
+    <circle cx="180" cy="142" r="2.5"/><circle cx="210" cy="142" r="2.5"/><circle cx="240" cy="142" r="2.5"/><circle cx="270" cy="142" r="2.5"/><circle cx="300" cy="142" r="2.5"/>
+    <!-- Row 4 -->
+    <circle cx="180" cy="157" r="2.5"/><circle cx="210" cy="157" r="2.5"/><circle cx="240" cy="157" r="2.5"/><circle cx="270" cy="157" r="2.5"/><circle cx="300" cy="157" r="2.5"/>
+    <!-- Row 5 -->
+    <circle cx="180" cy="172" r="2.5"/><circle cx="210" cy="172" r="2.5"/><circle cx="240" cy="172" r="2.5"/><circle cx="270" cy="172" r="2.5"/><circle cx="300" cy="172" r="2.5"/>
+  </g>
+
+  <!-- Example holes right half (f-j) -->
+  <g fill="#888">
+    <circle cx="340" cy="112" r="2.5"/><circle cx="370" cy="112" r="2.5"/><circle cx="400" cy="112" r="2.5"/><circle cx="430" cy="112" r="2.5"/><circle cx="460" cy="112" r="2.5"/>
+    <circle cx="340" cy="127" r="2.5"/><circle cx="370" cy="127" r="2.5"/><circle cx="400" cy="127" r="2.5"/><circle cx="430" cy="127" r="2.5"/><circle cx="460" cy="127" r="2.5"/>
+    <circle cx="340" cy="142" r="2.5"/><circle cx="370" cy="142" r="2.5"/><circle cx="400" cy="142" r="2.5"/><circle cx="430" cy="142" r="2.5"/><circle cx="460" cy="142" r="2.5"/>
+    <circle cx="340" cy="157" r="2.5"/><circle cx="370" cy="157" r="2.5"/><circle cx="400" cy="157" r="2.5"/><circle cx="430" cy="157" r="2.5"/><circle cx="460" cy="157" r="2.5"/>
+    <circle cx="340" cy="172" r="2.5"/><circle cx="370" cy="172" r="2.5"/><circle cx="400" cy="172" r="2.5"/><circle cx="430" cy="172" r="2.5"/><circle cx="460" cy="172" r="2.5"/>
+  </g>
+
+  <!-- HIGHLIGHT row 3 connected horizontally (left half) -->
+  <rect x="175" y="138" width="130" height="9" rx="3" fill="#22c55e" opacity="0.3"/>
+  <!-- HIGHLIGHT row 3 connected horizontally (right half) -->
+  <rect x="335" y="138" width="130" height="9" rx="3" fill="#f59e0b" opacity="0.3"/>
+
+  <!-- CONNECTION RULES -->
+
+  <!-- Rule 1 -->
+  <rect x="560" y="70" width="370" height="100" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="570" y="92" font-size="12" font-weight="bold" fill="#166534">RULE 1: Rows connect horizontally</text>
+  <text x="570" y="112" font-size="10" fill="#333">Each row connects 5 holes: a-b-c-d-e</text>
+  <text x="570" y="128" font-size="10" fill="#333">The same row on the other side: f-g-h-i-j</text>
+  <text x="570" y="148" font-size="10" fill="#16a34a" font-weight="bold">Left half and right half DO NOT connect</text>
+  <line x1="240" y1="142" x2="560" y2="110" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4"/>
+
+  <!-- Rule 2 -->
+  <rect x="560" y="185" width="370" height="80" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="570" y="207" font-size="12" font-weight="bold" fill="#854d0e">RULE 2: Center gap breaks it</text>
+  <text x="570" y="227" font-size="10" fill="#333">The gap between e and f means</text>
+  <text x="570" y="243" font-size="10" fill="#333">row 3 left (a-e) is NOT connected to</text>
+  <text x="570" y="259" font-size="10" fill="#333">row 3 right (f-j).</text>
+  <line x1="320" y1="142" x2="560" y2="230" stroke="#ca8a04" stroke-width="1.5" stroke-dasharray="4"/>
+
+  <!-- Rule 3 -->
+  <rect x="560" y="280" width="370" height="100" rx="8" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="570" y="302" font-size="12" font-weight="bold" fill="#991b1b">RULE 3: Power rails run vertically</text>
+  <text x="570" y="322" font-size="10" fill="#333">+ rail: ALL holes connected top to bottom</text>
+  <text x="570" y="338" font-size="10" fill="#333">- rail: ALL holes connected top to bottom</text>
+  <text x="570" y="358" font-size="10" fill="#333">Both sides have identical + and - rails</text>
+  <text x="570" y="373" font-size="10" fill="#dc2626" font-weight="bold">You only need to wire ONE side.</text>
+  <line x1="136" y1="300" x2="560" y2="322" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4"/>
+
+  <!-- PRACTICAL EXAMPLE -->
+  <rect x="560" y="400" width="370" height="210" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="570" y="425" font-size="13" font-weight="bold" fill="#1e40af">EXAMPLE: Sharing 5V with 3 sensors</text>
+
+  <g font-size="10" fill="#333">
+    <text x="570" y="450" font-weight="bold" fill="#dc2626">Step 1:</text>
+    <text x="630" y="450">Arduino 5V pin to any hole</text>
+    <text x="630" y="464">in + rail (left side)</text>
+
+    <text x="570" y="488" font-weight="bold" fill="#2563eb">Step 2:</text>
+    <text x="630" y="488">Arduino GND pin to any hole</text>
+    <text x="630" y="502">in - rail (left side)</text>
+
+    <text x="570" y="526" font-weight="bold" fill="#16a34a">Step 3:</text>
+    <text x="630" y="526">For each sensor:</text>
+    <text x="630" y="540">VCC wire to any hole in + rail</text>
+    <text x="630" y="554">GND wire to any hole in - rail</text>
+
+    <text x="570" y="578" font-weight="bold" fill="#7c3aed">Step 4:</text>
+    <text x="630" y="578">Signal wire goes to a main grid</text>
+    <text x="630" y="592">row, then jumper from that row</text>
+    <text x="630" y="606">to the Arduino signal pin</text>
+  </g>
+
+  <!-- KEY INSIGHT -->
+  <rect x="120" y="625" width="810" height="55" rx="8" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="525" y="648" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">KEY INSIGHT FOR YOUR BUILD:</text>
+  <text x="525" y="668" text-anchor="middle" font-size="11" fill="#555">Plug components into the main grid rows (a-j). Use the + and - power rails to distribute 5V and GND.</text>
+  <text x="525" y="682" text-anchor="middle" font-size="11" fill="#555">Any two things plugged into the same row (same half) are automatically connected.</text>
+</svg>

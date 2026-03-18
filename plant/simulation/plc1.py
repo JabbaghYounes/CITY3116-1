@@ -28,7 +28,7 @@ from pymodbus.datastore import (
 )
 
 from utils import (
-    PLC, STATE, PLC2_ADDR, MODBUS_PORT, PLC_PERIOD,
+    PLC, STATE, PLC2_ADDR, PLC2_PORT, MODBUS_PORT, PLC_PERIOD,
     PUMP_STATE, VALVE_POS, ALARM_STATE,
     TANK_LEVEL, TEMPERATURE, SOUND_LEVEL, ULTRASONIC, MOTION
 )
@@ -64,7 +64,7 @@ class WaterTreatmentPLC1(PLC):
 
         # ---- Modbus TCP client (polls PLC2 sensor node) ----
 
-        self.plc2_client = ModbusTcpClient(PLC2_ADDR, port=MODBUS_PORT)
+        self.plc2_client = ModbusTcpClient(PLC2_ADDR, port=PLC2_PORT)
         connected = False
         for attempt in range(10):
             if self.plc2_client.connect():

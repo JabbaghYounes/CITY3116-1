@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPS Water Treatment Plant</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  /* Header */
+  .header { background: #1e293b; border-bottom: 1px solid #334155; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header-controls { display: flex; gap: 12px; align-items: center; }
+  .status-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .status-badge.running { background: #166534; color: #4ade80; }
+  .status-badge.stopped { background: #991b1b; color: #fca5a5; }
+  .btn { padding: 6px 16px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+  .btn-start { background: #16a34a; color: white; }
+  .btn-start:hover { background: #15803d; }
+  .btn-stop { background: #dc2626; color: white; }
+  .btn-stop:hover { background: #b91c1c; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Main layout */
+  .main { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+
+  /* Panel */
+  .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
+  .panel-title { padding: 12px 16px; font-size: 14px; font-weight: 600; border-bottom: 1px solid #334155; background: #0f172a; }
+
+  /* Plant SVG */
+  .plant-panel { grid-column: 1 / -1; }
+  .plant-svg { width: 100%; height: auto; display: block; padding: 16px; }
+
+  /* Sensor cards */
+  .sensor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; padding: 16px; }
+  .sensor-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center; }
+  .sensor-card .label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sensor-card .value { font-size: 28px; font-weight: 700; margin: 4px 0; font-variant-numeric: tabular-nums; }
+  .sensor-card .unit { font-size: 12px; color: #64748b; }
+  .sensor-card.alarm .value { color: #ef4444; }
+  .sensor-card.ok .value { color: #4ade80; }
+
+  /* Controls */
+  .controls { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .control-row { display: flex; align-items: center; justify-content: space-between; }
+  .control-label { font-size: 13px; color: #94a3b8; }
+  .toggle { width: 52px; height: 28px; border-radius: 14px; border: none; cursor: pointer; position: relative; transition: background 0.3s; }
+  .toggle.on { background: #16a34a; }
+  .toggle.off { background: #475569; }
+  .toggle::after { content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: white; top: 3px; transition: left 0.3s; }
+  .toggle.on::after { left: 27px; }
+  .toggle.off::after { left: 3px; }
+  .slider-row { display: flex; flex-direction: column; gap: 6px; }
+  .slider-val { font-size: 13px; color: #e2e8f0; text-align: right; }
+  input[type="range"] { width: 100%; accent-color: #3b82f6; }
+
+  /* Terminal */
+  .terminal-panel { grid-column: 1 / -1; }
+  .terminal-controls { padding: 10px 16px; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #334155; flex-wrap: wrap; }
+  .terminal-controls select { background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .terminal-output { background: #0d1117; color: #4ade80; font-family: 'Consolas', 'Fira Code', monospace; font-size: 13px; padding: 12px 16px; height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .terminal-output .line-error { color: #f87171; }
+  .terminal-output .line-info { color: #60a5fa; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>CPS Water Treatment Plant</h1>
+  <div class="header-controls">
+    <span id="statusBadge" class="status-badge stopped">STOPPED</span>
+    <button id="btnStart" class="btn btn-start" onclick="startSim()">Start Simulation</button>
+    <button id="btnStop" class="btn btn-stop" onclick="stopSim()" disabled>Stop</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Plant Visualization -->
+  <div class="panel plant-panel">
+    <div class="panel-title">Plant Visualization</div>
+    <svg class="plant-svg" viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg">
+      <!-- Background -->
+      <rect width="800" height="320" fill="#0f172a" rx="8"/>
+
+      <!-- Tank -->
+      <rect x="280" y="40" width="160" height="220" rx="6" fill="none" stroke="#475569" stroke-width="2"/>
+      <text x="360" y="30" text-anchor="middle" font-size="12" fill="#94a3b8" font-family="sans-serif">TANK</text>
+      <!-- Water fill (animated) -->
+      <clipPath id="tankClip"><rect x="282" y="42" width="156" height="216" rx="4"/></clipPath>
+      <rect id="waterFill" x="282" y="260" width="156" height="0" fill="#3b82f6" opacity="0.7" clip-path="url(#tankClip)">
+        <animate attributeName="opacity" values="0.6;0.8;0.6" dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <!-- Tank level text -->
+      <text id="tankText" x="360" y="160" text-anchor="middle" font-size="24" font-weight="bold" fill="white" font-family="sans-serif">0%</text>
+
+      <!-- Pump -->
+      <circle id="pumpCircle" cx="120" cy="180" r="35" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+      <text x="120" y="175" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="sans-serif">PUMP</text>
+      <text id="pumpText" x="120" y="195" text-anchor="middle" font-size="14" font-weight="bold" fill="#64748b" font-family="sans-serif">OFF</text>
+
+      <!-- Pipe: pump to tank -->
+      <line x1="155" y1="180" x2="280" y2="180" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
+      <!-- Flow indicator -->
+      <line id="flowLine" x1="155" y1="180" x2="280" y2="180" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 15" opacity="0">
+        <animate attributeName="stroke-dashoffset" values="25;0" dur="0.8s" repeatCount="indefinite"/>
+      </line>
+
+      <!-- Valve -->
+      <g transform="translate(640,180)">
+        <circle r="30" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+        <text x="0" y="-5" text-anchor="middle" font-size="11" fill="#94a3b8" font-family="sans-serif">VALVE</text>
+        <text id="valveText" x="0" y="12" text-anchor="middle" font-size="13" font-weight="bold" fill="#64748b" font-family="sans-serif">90</text>
+        <!-- Valve arc indicator -->
+        <path id="valveArc" d="M0,-22 A22,22 0 0,1 0,-22" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+      </g>
+
+      <!-- Pipe: tank to valve -->
+      <line x1="440" y1="180" x2="610" y2="180" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
+
+      <!-- Outflow pipe -->
+      <line x1="670" y1="180" x2="780" y2="180" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
+      <text x="740" y="170" text-anchor="middle" font-size="10" fill="#64748b" font-family="sans-serif">OUTFLOW</text>
+
+      <!-- Alarm indicator -->
+      <g id="alarmGroup" transform="translate(360,290)" opacity="0">
+        <circle r="10" fill="#ef4444">
+          <animate attributeName="opacity" values="1;0.3;1" dur="0.8s" repeatCount="indefinite"/>
+        </circle>
+        <text x="18" y="5" font-size="12" font-weight="bold" fill="#ef4444" font-family="sans-serif">ALARM</text>
+      </g>
+
+      <!-- Sensor indicators -->
+      <g transform="translate(50,50)">
+        <text font-size="10" fill="#94a3b8" font-family="sans-serif">SENSORS</text>
+        <text id="sensorTemp" y="18" font-size="11" fill="#60a5fa" font-family="monospace">Temp: --</text>
+        <text id="sensorSound" y="34" font-size="11" fill="#60a5fa" font-family="monospace">Sound: --</text>
+        <text id="sensorUltra" y="50" font-size="11" fill="#60a5fa" font-family="monospace">Dist: --</text>
+        <text id="sensorMotion" y="66" font-size="11" fill="#60a5fa" font-family="monospace">Motion: --</text>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Sensor Cards + Controls -->
+  <div class="panel">
+    <div class="panel-title">Sensor Data</div>
+    <div class="sensor-grid">
+      <div class="sensor-card ok" id="cardTank">
+        <div class="label">Tank Level</div>
+        <div class="value" id="valTank">--</div>
+        <div class="unit">%</div>
+      </div>
+      <div class="sensor-card" id="cardTemp">
+        <div class="label">Temperature</div>
+        <div class="value" id="valTemp">--</div>
+        <div class="unit">ADC</div>
+      </div>
+      <div class="sensor-card" id="cardSound">
+        <div class="label">Sound Level</div>
+        <div class="value" id="valSound">--</div>
+        <div class="unit">ADC</div>
+      </div>
+      <div class="sensor-card" id="cardUltra">
+        <div class="label">Ultrasonic</div>
+        <div class="value" id="valUltra">--</div>
+        <div class="unit">cm</div>
+      </div>
+      <div class="sensor-card" id="cardPump">
+        <div class="label">Pump</div>
+        <div class="value" id="valPump">--</div>
+        <div class="unit">&nbsp;</div>
+      </div>
+      <div class="sensor-card" id="cardAlarm">
+        <div class="label">Alarm</div>
+        <div class="value" id="valAlarm">--</div>
+        <div class="unit">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCADA Controls -->
+  <div class="panel">
+    <div class="panel-title">SCADA Controls</div>
+    <div class="controls">
+      <div class="control-row">
+        <span class="control-label">Pump Override</span>
+        <button id="pumpToggle" class="toggle off" onclick="togglePump()"></button>
+      </div>
+      <div class="slider-row">
+        <div class="control-row">
+          <span class="control-label">Valve Position</span>
+          <span class="slider-val" id="valveSliderVal">90&deg;</span>
+        </div>
+        <input type="range" id="valveSlider" min="0" max="180" value="90" oninput="setValve(this.value)">
+      </div>
+      <hr style="border-color:#334155; margin:8px 0;">
+      <div class="control-row">
+        <span class="control-label" style="font-size:11px;color:#64748b;">
+          Pump: ON when tank &lt; 30%, OFF when &gt; 85%<br>
+          Valve: 120&deg; (pump ON), 40&deg; (pump OFF)
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Attack Terminal -->
+  <div class="panel terminal-panel">
+    <div class="panel-title">Attack Terminal</div>
+    <div class="terminal-controls">
+      <select id="attackSelect">
+        <option value="read_state">Read State (recon)</option>
+        <option value="command_injection">Command Injection</option>
+        <option value="pump_oscillation">Pump Oscillation</option>
+        <option value="valve_attack">Valve Manipulation</option>
+        <option value="replay_attack">Replay Attack</option>
+        <option value="sensor_spoof">Sensor Spoofing</option>
+        <option value="modbus_flood">Modbus Flood</option>
+        <option value="multi_stage_attack">Multi-Stage Attack</option>
+      </select>
+      <button class="btn btn-start" onclick="startAttack()">Run Attack</button>
+      <button class="btn btn-stop" onclick="stopAttack()">Stop</button>
+      <button class="btn" style="background:#334155;color:#94a3b8;" onclick="clearTerminal()">Clear</button>
+    </div>
+    <div id="terminalOutput" class="terminal-output">Waiting for simulation to start...\n</div>
+  </div>
+
+</div>
+
+<script>
+// ================================================================
+//  State
+// ================================================================
+let plantWs = null;
+let termWs = null;
+let simRunning = false;
+let manualPump = null; // null = auto, true/false = override
+
+// ================================================================
+//  WebSocket: Plant Data
+// ================================================================
+function connectPlantWs() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  plantWs = new WebSocket(`${proto}//${location.host}/ws/plant`);
+
+  plantWs.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (!d.connected) {
+      updateUI(null);
+      return;
+    }
+    updateUI(d);
+  };
+
+  plantWs.onclose = () => {
+    setTimeout(connectPlantWs, 3000);
+  };
+}
+
+// ================================================================
+//  WebSocket: Terminal
+// ================================================================
+function connectTermWs() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  termWs = new WebSocket(`${proto}//${location.host}/ws/terminal`);
+
+  termWs.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (d.output) {
+      appendTerminal(d.output);
+    } else if (d.status) {
+      appendTerminal(`[${d.status}] ${d.attack || ''}`, 'info');
+    } else if (d.error) {
+      appendTerminal(`[ERROR] ${d.error}`, 'error');
+    }
+  };
+
+  termWs.onclose = () => {
+    setTimeout(connectTermWs, 3000);
+  };
+}
+
+// ================================================================
+//  UI Updates
+// ================================================================
+function updateUI(d) {
+  if (!d) {
+    document.getElementById('valTank').textContent = '--';
+    document.getElementById('valTemp').textContent = '--';
+    document.getElementById('valSound').textContent = '--';
+    document.getElementById('valUltra').textContent = '--';
+    document.getElementById('valPump').textContent = '--';
+    document.getElementById('valAlarm').textContent = '--';
+    return;
+  }
+
+  // Sensor cards
+  document.getElementById('valTank').textContent = d.tank_percent;
+  document.getElementById('valTemp').textContent = d.temperature;
+  document.getElementById('valSound').textContent = d.sound_level;
+  document.getElementById('valUltra').textContent = d.ultrasonic;
+
+  const pumpOn = d.pump_state === 1;
+  document.getElementById('valPump').textContent = pumpOn ? 'ON' : 'OFF';
+  document.getElementById('cardPump').className = `sensor-card ${pumpOn ? 'ok' : ''}`;
+
+  const alarmOn = d.alarm_state === 1;
+  document.getElementById('valAlarm').textContent = alarmOn ? 'ACTIVE' : 'OK';
+  document.getElementById('cardAlarm').className = `sensor-card ${alarmOn ? 'alarm' : 'ok'}`;
+
+  // SVG: water level
+  const waterHeight = (d.tank_percent / 100) * 216;
+  const waterY = 42 + 216 - waterHeight;
+  const waterEl = document.getElementById('waterFill');
+  waterEl.setAttribute('y', waterY);
+  waterEl.setAttribute('height', waterHeight);
+  document.getElementById('tankText').textContent = d.tank_percent + '%';
+
+  // SVG: pump
+  const pumpCircle = document.getElementById('pumpCircle');
+  const pumpText = document.getElementById('pumpText');
+  const flowLine = document.getElementById('flowLine');
+  if (pumpOn) {
+    pumpCircle.setAttribute('fill', '#166534');
+    pumpCircle.setAttribute('stroke', '#4ade80');
+    pumpText.textContent = 'ON';
+    pumpText.setAttribute('fill', '#4ade80');
+    flowLine.setAttribute('opacity', '1');
+  } else {
+    pumpCircle.setAttribute('fill', '#1e293b');
+    pumpCircle.setAttribute('stroke', '#475569');
+    pumpText.textContent = 'OFF';
+    pumpText.setAttribute('fill', '#64748b');
+    flowLine.setAttribute('opacity', '0');
+  }
+
+  // SVG: valve
+  document.getElementById('valveText').textContent = d.valve_position + '\u00B0';
+  const angle = (d.valve_position / 180) * Math.PI;
+  const endX = 22 * Math.sin(angle);
+  const endY = -22 * Math.cos(angle);
+  const largeArc = d.valve_position > 180 ? 1 : 0;
+  document.getElementById('valveArc').setAttribute('d',
+    `M0,-22 A22,22 0 ${largeArc},1 ${endX.toFixed(1)},${endY.toFixed(1)}`
+  );
+
+  // SVG: alarm
+  document.getElementById('alarmGroup').setAttribute('opacity', alarmOn ? '1' : '0');
+
+  // SVG: sensor text
+  document.getElementById('sensorTemp').textContent = `Temp: ${d.temperature}`;
+  document.getElementById('sensorSound').textContent = `Sound: ${d.sound_level}`;
+  document.getElementById('sensorUltra').textContent = `Dist: ${d.ultrasonic} cm`;
+  document.getElementById('sensorMotion').textContent = `Motion: ${d.alarm_state ? 'YES' : 'no'}`;
+
+  // Pump toggle visual sync
+  const toggle = document.getElementById('pumpToggle');
+  toggle.className = `toggle ${pumpOn ? 'on' : 'off'}`;
+
+  // Valve slider sync (only if user isn't actively dragging)
+  if (!document.getElementById('valveSlider').matches(':active')) {
+    document.getElementById('valveSlider').value = d.valve_position;
+    document.getElementById('valveSliderVal').innerHTML = d.valve_position + '&deg;';
+  }
+}
+
+// ================================================================
+//  Controls
+// ================================================================
+function togglePump() {
+  if (!plantWs || plantWs.readyState !== WebSocket.OPEN) return;
+  const toggle = document.getElementById('pumpToggle');
+  const newState = toggle.classList.contains('off');
+  plantWs.send(JSON.stringify({
+    action: 'write_coil', address: 0, value: newState
+  }));
+}
+
+function setValve(val) {
+  document.getElementById('valveSliderVal').innerHTML = val + '&deg;';
+  if (!plantWs || plantWs.readyState !== WebSocket.OPEN) return;
+  plantWs.send(JSON.stringify({
+    action: 'write_register', address: 1, value: parseInt(val)
+  }));
+}
+
+// ================================================================
+//  Simulation Lifecycle
+// ================================================================
+async function startSim() {
+  document.getElementById('btnStart').disabled = true;
+  appendTerminal('[SIM] Starting simulation...', 'info');
+  const resp = await fetch('/api/simulation/start', { method: 'POST' });
+  const data = await resp.json();
+  if (data.status === 'started' || data.status === 'already_running') {
+    simRunning = true;
+    document.getElementById('statusBadge').className = 'status-badge running';
+    document.getElementById('statusBadge').textContent = 'RUNNING';
+    document.getElementById('btnStop').disabled = false;
+    appendTerminal('[SIM] Simulation started on port ' + (data.plc1_port || ''), 'info');
+  }
+  document.getElementById('btnStart').disabled = false;
+}
+
+async function stopSim() {
+  document.getElementById('btnStop').disabled = true;
+  appendTerminal('[SIM] Stopping simulation...', 'info');
+  await fetch('/api/simulation/stop', { method: 'POST' });
+  simRunning = false;
+  document.getElementById('statusBadge').className = 'status-badge stopped';
+  document.getElementById('statusBadge').textContent = 'STOPPED';
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = false;
+  appendTerminal('[SIM] Simulation stopped', 'info');
+  updateUI(null);
+}
+
+// ================================================================
+//  Attack Terminal
+// ================================================================
+function startAttack() {
+  if (!termWs || termWs.readyState !== WebSocket.OPEN) return;
+  const attack = document.getElementById('attackSelect').value;
+  appendTerminal(`[ATTACK] Launching: ${attack}`, 'info');
+  termWs.send(JSON.stringify({ command: 'start', attack: attack }));
+}
+
+function stopAttack() {
+  if (!termWs || termWs.readyState !== WebSocket.OPEN) return;
+  termWs.send(JSON.stringify({ command: 'stop' }));
+  appendTerminal('[ATTACK] Stopped', 'info');
+}
+
+function appendTerminal(text, type) {
+  const el = document.getElementById('terminalOutput');
+  const span = document.createElement('span');
+  if (type === 'error') span.className = 'line-error';
+  else if (type === 'info') span.className = 'line-info';
+  span.textContent = text + '\n';
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+
+  // Keep max 500 lines
+  while (el.childNodes.length > 500) {
+    el.removeChild(el.firstChild);
+  }
+}
+
+function clearTerminal() {
+  document.getElementById('terminalOutput').innerHTML = '';
+}
+
+// ================================================================
+//  Init
+// ================================================================
+window.addEventListener('load', () => {
+  connectPlantWs();
+  connectTermWs();
+
+  // Check if sim is already running
+  fetch('/api/simulation/status').then(r => r.json()).then(d => {
+    if (d.running) {
+      simRunning = true;
+      document.getElementById('statusBadge').className = 'status-badge running';
+      document.getElementById('statusBadge').textContent = 'RUNNING';
+      document.getElementById('btnStop').disabled = false;
+    }
+  });
+});
+</script>
+
+</body>
+</html>

@@ -33,5 +33,9 @@ plant/simulation/plant_db.sqlite
 plant/simulation/__pycache__/
 plant/simulation/*.log
 
+# Plant dashboard + attack framework cache
+plant/dashboard/__pycache__/
+plant/__pycache__/
+
 # OS files
 .DS_Store

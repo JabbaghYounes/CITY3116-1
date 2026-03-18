@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 750" font-family="Consolas, monospace" font-size="12">
+  <title>Pin Reference Cheatsheet</title>
+
+  <rect width="950" height="750" fill="white" rx="8"/>
+
+  <text x="475" y="28" text-anchor="middle" font-size="18" font-weight="bold">CPS Plant Pin Reference Cheatsheet</text>
+  <text x="475" y="44" text-anchor="middle" font-size="10" fill="#666">Verified against firmware. Pin order matches physical boards. Print and keep next to boards.</text>
+
+  <!-- PLC 2 UNO -->
+  <rect x="490" y="60" width="440" height="510" rx="8" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="710" y="85" text-anchor="middle" font-size="15" font-weight="bold" fill="#166534">PLC 2 : Arduino Uno R3</text>
+
+  <!-- Uno physical pin layout -->
+  <rect x="505" y="100" width="410" height="215" rx="6" fill="white" stroke="#a7f3d0"/>
+  <text x="515" y="118" font-size="11" font-weight="bold" fill="#166534">Physical Pin Layout (as printed on board)</text>
+
+  <!-- Left header: POWER then ANALOG -->
+  <g font-size="9" fill="#333">
+    <text x="515" y="140" font-weight="bold" fill="#666">LEFT: POWER (top)</text>
+    <text x="515" y="155" fill="#999">IOREF</text>
+    <text x="515" y="168" fill="#999">RESET</text>
+    <text x="515" y="181" fill="#f59e0b">3.3V</text>
+    <text x="515" y="194" fill="#dc2626" font-weight="bold">5V ................. to + rail</text>
+    <text x="515" y="207" font-weight="bold">GND .............. to - rail</text>
+    <text x="515" y="220" fill="#999">GND (spare)</text>
+    <text x="515" y="233" fill="#999">Vin</text>
+    <text x="515" y="250" fill="#666" font-weight="bold">LEFT: ANALOG IN (bottom)</text>
+    <text x="515" y="263" fill="#16a34a" font-weight="bold">A0 from Water Level (S)</text>
+    <text x="515" y="276" fill="#999">A1 (unused)</text>
+    <text x="515" y="289" fill="#16a34a" font-weight="bold">A2 from Sound (OUT)</text>
+    <text x="515" y="302" fill="#999">A3, A4, A5 (unused)</text>
+  </g>
+
+  <!-- Right header: DIGITAL -->
+  <g font-size="9" fill="#333">
+    <text x="720" y="140" font-weight="bold" fill="#666">RIGHT: DIGITAL (top to bottom)</text>
+    <text x="720" y="155" fill="#999">SCL (top)</text>
+    <text x="720" y="168" fill="#999">SDA</text>
+    <text x="720" y="181" fill="#999">AREF</text>
+    <text x="720" y="194" fill="#999">GND</text>
+    <text x="720" y="207" fill="#999">13, 12, 11, 10, 9, 8</text>
+    <text x="720" y="224" fill="#d97706" font-weight="bold">7 from Ultrasonic TRIG</text>
+    <text x="720" y="237" fill="#d97706" font-weight="bold">6 from Ultrasonic ECHO</text>
+    <text x="720" y="250" fill="#999">5</text>
+    <text x="720" y="263" fill="#d97706" font-weight="bold">4 from DHT11 Temp (S)</text>
+    <text x="720" y="276" fill="#d97706" font-weight="bold">3 from PIR Motion (OUT)</text>
+    <text x="720" y="289" fill="#d97706" font-weight="bold">2 to MAX485 DE+RE</text>
+    <text x="720" y="302" fill="#d97706" font-weight="bold">1 (TX) to MAX485 DI</text>
+    <text x="720" y="315" fill="#d97706" font-weight="bold">0 (RX) from MAX485 RO</text>
+  </g>
+
+  <!-- MAX485 Section -->
+  <rect x="505" y="325" width="410" height="65" rx="6" fill="white" stroke="#ca8a04"/>
+  <text x="515" y="343" font-size="11" font-weight="bold" fill="#854d0e">MAX485 RS-485 (Modbus RTU Slave ID 1, 9600 baud)</text>
+  <line x1="505" y1="348" x2="915" y2="348" stroke="#ca8a04"/>
+  <text x="515" y="365" font-size="10" fill="#333">DI to D1 (TX)     RO to D0 (RX)     DE+RE to D2 (tied)</text>
+  <text x="515" y="382" font-size="10" fill="#333">VCC to +rail       GND to -rail       A/B to twisted pair to PLC 1</text>
+
+  <!-- Sensor register table -->
+  <rect x="505" y="400" width="410" height="135" rx="6" fill="white" stroke="#16a34a"/>
+  <text x="515" y="418" font-size="11" font-weight="bold" fill="#166534">Sensor to Modbus Register Map</text>
+  <line x1="505" y1="423" x2="915" y2="423" stroke="#16a34a"/>
+  <g font-size="10" fill="#666" font-weight="bold">
+    <text x="515" y="440">Sensor</text>
+    <text x="660" y="440">Arduino Pin</text>
+    <text x="790" y="440">Modbus Reg</text>
+  </g>
+  <line x1="510" y1="445" x2="910" y2="445" stroke="#dcfce7"/>
+  <g font-size="10" fill="#333">
+    <text x="515" y="462">Ultrasonic HC-SR04</text>
+    <text x="660" y="462">TRIG=D7, ECHO=D6</text>
+    <text x="790" y="462">Reg 0 (cm)</text>
+    <text x="515" y="478">DHT11 Temp+Humidity</text>
+    <text x="660" y="478">D4</text>
+    <text x="790" y="478">Reg 1 (Celsius)</text>
+    <text x="515" y="494">Sound</text>
+    <text x="660" y="494">A2</text>
+    <text x="790" y="494">Reg 2 (ADC)</text>
+    <text x="515" y="510">Motion (PIR)</text>
+    <text x="660" y="510">D3</text>
+    <text x="790" y="510">Reg 3 (0/1)</text>
+    <text x="515" y="526">Water Level</text>
+    <text x="660" y="526">A0</text>
+    <text x="790" y="526">Reg 4 (ADC)</text>
+  </g>
+
+  <!-- PLC 2 Warning -->
+  <rect x="505" y="542" width="410" height="22" rx="4" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="515" y="558" font-size="10" fill="#dc2626" font-weight="bold">Disconnect MAX485 from D0/D1 BEFORE uploading firmware via USB!</text>
+
+  <!-- PLC 1 MEGA -->
+  <rect x="20" y="60" width="440" height="600" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="240" y="85" text-anchor="middle" font-size="15" font-weight="bold" fill="#1e40af">PLC 1 : Arduino Mega 2560</text>
+
+  <!-- W5500 Section -->
+  <rect x="35" y="100" width="410" height="85" rx="6" fill="white" stroke="#93c5fd"/>
+  <text x="50" y="118" font-size="12" font-weight="bold" fill="#1e40af">W5500 Ethernet (Modbus TCP)</text>
+  <line x1="35" y1="123" x2="445" y2="123" stroke="#93c5fd"/>
+  <g font-size="11" fill="#333">
+    <text x="50" y="140">MOSI to D51</text>
+    <text x="180" y="140">MISO to D50</text>
+    <text x="310" y="140">SCK to D52</text>
+    <text x="50" y="158">CS   to D10</text>
+    <text x="180" y="158">VCC  to 5V</text>
+    <text x="310" y="158">GND to GND</text>
+    <text x="50" y="176" fill="#2563eb">RJ45 to Switch Port 2     IP: 192.168.1.20:502</text>
+  </g>
+
+  <!-- MAX485 Section -->
+  <rect x="35" y="195" width="410" height="75" rx="6" fill="white" stroke="#ca8a04"/>
+  <text x="50" y="213" font-size="12" font-weight="bold" fill="#854d0e">MAX485 RS-485 (Modbus RTU Master)</text>
+  <line x1="35" y1="218" x2="445" y2="218" stroke="#ca8a04"/>
+  <g font-size="11" fill="#333">
+    <text x="50" y="236">DI   to TX1 (D18)</text>
+    <text x="230" y="236">RO  to RX1 (D19)</text>
+    <text x="50" y="254">DE+RE to D2 (tied)</text>
+    <text x="230" y="254">VCC to 5V    GND to GND</text>
+  </g>
+
+  <!-- Actuators Section -->
+  <rect x="35" y="280" width="410" height="95" rx="6" fill="white" stroke="#ec4899"/>
+  <text x="50" y="298" font-size="12" font-weight="bold" fill="#9d174d">Actuators</text>
+  <line x1="35" y1="303" x2="445" y2="303" stroke="#ec4899"/>
+  <g font-size="11" fill="#333">
+    <text x="50" y="322">Pump Relay   IN to D8</text>
+    <text x="290" y="322" fill="#9d174d">HIGH = ON</text>
+    <text x="50" y="340">Servo Valve  Signal to D9</text>
+    <text x="290" y="340" fill="#9d174d">120deg / 40deg</text>
+    <text x="50" y="358">Buzzer       + to D12,  - to GND</text>
+  </g>
+
+  <!-- LCD Section -->
+  <rect x="35" y="385" width="410" height="85" rx="6" fill="white" stroke="#db2777"/>
+  <text x="50" y="403" font-size="12" font-weight="bold" fill="#9d174d">LCD 16x2 (HMI)</text>
+  <line x1="35" y1="408" x2="445" y2="408" stroke="#db2777"/>
+  <g font-size="11" fill="#333">
+    <text x="50" y="426">RS to D22    E to D23</text>
+    <text x="50" y="444">D4 to D24    D5 to D25    D6 to D26    D7 to D27</text>
+    <text x="50" y="462">VSS to GND   VDD to 5V   RW to GND   VO to pot</text>
+  </g>
+
+  <!-- RFID Section -->
+  <rect x="35" y="480" width="410" height="75" rx="6" fill="white" stroke="#7c3aed"/>
+  <text x="50" y="498" font-size="12" font-weight="bold" fill="#5b21b6">MFRC522 RFID</text>
+  <line x1="35" y1="503" x2="445" y2="503" stroke="#7c3aed"/>
+  <g font-size="11" fill="#333">
+    <text x="50" y="522">SDA to D53 (CS)    RST to D5</text>
+    <text x="50" y="540">SCK to D52    MOSI to D51    MISO to D50</text>
+    <text x="310" y="540" fill="#dc2626" font-weight="bold">3.3V! not 5V</text>
+  </g>
+
+  <!-- SPI Note -->
+  <rect x="35" y="565" width="410" height="40" rx="6" fill="#fef3c7" stroke="#d97706"/>
+  <text x="50" y="582" font-size="10" font-weight="bold" fill="#92400e">SPI BUS SHARED:</text>
+  <text x="50" y="596" font-size="10" fill="#92400e">W5500 CS=D10  |  RFID CS=D53  |  MISO/MOSI/SCK shared (D50/51/52)</text>
+
+  <!-- Mega pin summary -->
+  <rect x="35" y="615" width="410" height="35" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="50" y="633" font-size="10" fill="#475569" font-weight="bold">PINS USED: D2, D5, D8, D9, D10, D12, D18, D19, D22-27, D50-53</text>
+  <text x="50" y="645" font-size="9" fill="#94a3b8">Free: D3-4, D6-7, D11, D13-17, D20-21, D28-49</text>
+
+  <!-- RS-485 BUS -->
+  <rect x="490" y="585" width="440" height="65" rx="8" fill="#fefce8" stroke="#ca8a04" stroke-width="2"/>
+  <text x="710" y="608" text-anchor="middle" font-size="13" font-weight="bold" fill="#854d0e">RS-485 Bus</text>
+  <text x="510" y="628" font-size="11" fill="#333">Mega MAX485 A ----twisted pair---- Uno MAX485 A</text>
+  <text x="510" y="643" font-size="11" fill="#333">Mega MAX485 B ----twisted pair---- Uno MAX485 B</text>
+
+  <!-- Ethernet -->
+  <rect x="490" y="660" width="440" height="55" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="710" y="682" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">Ethernet</text>
+  <text x="510" y="702" font-size="11" fill="#333">Port 1 to PC (192.168.1.10)    Port 2 to PLC 1 (192.168.1.20)</text>
+
+  <!-- Termination note -->
+  <text x="475" y="738" text-anchor="middle" font-size="10" fill="#dc2626" font-weight="bold">120 ohm termination resistor across A-B at each end of RS-485 bus</text>
+</svg>

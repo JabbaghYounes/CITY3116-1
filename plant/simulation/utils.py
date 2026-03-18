@@ -95,12 +95,13 @@ STATE = {
 #  Network addresses
 # ================================================
 
-PLC1_ADDR = '192.168.1.20'
-PLC2_ADDR = '192.168.1.21'
+PLC1_ADDR = os.environ.get('PLC1_ADDR', '192.168.1.20')
+PLC2_ADDR = os.environ.get('PLC2_ADDR', '192.168.1.21')
 SCADA_ADDR = '192.168.1.10'
 ATTACKER_ADDR = '192.168.1.100'
 NETMASK = '/24'
-MODBUS_PORT = 502
+MODBUS_PORT = int(os.environ.get('MODBUS_PORT', 502))
+PLC2_PORT = int(os.environ.get('PLC2_PORT', MODBUS_PORT))
 
 # ================================================
 #  Process tags — (name, plc_id)

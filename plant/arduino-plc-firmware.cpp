@@ -74,7 +74,7 @@ void postTransmission() {
 /* Coil 0:        pump state (R/W)
    Holding Reg 0: tank level (raw ADC)
    Holding Reg 1: valve position (degrees)
-   Holding Reg 2: temperature (raw ADC)
+   Holding Reg 2: temperature (Celsius, integer, from DHT11)
    Holding Reg 3: sound level (raw ADC)
    Holding Reg 4: ultrasonic distance (cm)
    Holding Reg 5: alarm state (0/1)
@@ -248,9 +248,9 @@ void processLogic(){
     valvePosition = 40;
   }
 
-  /* temperature alarm */
+  /* temperature alarm (DHT11 sends Celsius, alarm above 40C) */
 
-  if(temperature > 700){
+  if(temperature > 40){
     alarmState = true;
   }
 
@@ -368,7 +368,7 @@ void updateHMI(){
   lcd.print(valvePosition);
 
   lcd.print(" T:");
-  lcd.print(map(temperature,0,1023,0,50));
+  lcd.print(temperature);
 
 }
 

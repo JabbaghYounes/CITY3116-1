@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" font-family="Consolas, monospace" font-size="12">
+  <title>PLC 2 — Arduino Uno Sensor Node Wiring</title>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#333"/></marker>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="620" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="450" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a1a">PLC 2 — Arduino Uno Rev3 (Sensor Node)</text>
+  <text x="450" y="48" text-anchor="middle" font-size="11" fill="#666">Modbus RTU Slave ID 1 — Polled by PLC 1 over RS-485 at 9600 baud</text>
+
+  <!-- Arduino Uno Board -->
+  <rect x="310" y="80" width="280" height="380" rx="12" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+  <rect x="320" y="90" width="260" height="360" rx="8" fill="#1e40af"/>
+  <text x="450" y="115" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Arduino Uno Rev3</text>
+  <text x="450" y="133" text-anchor="middle" font-size="10" fill="#93c5fd">ATmega328P</text>
+
+  <!-- USB port -->
+  <rect x="410" y="75" width="80" height="20" rx="3" fill="#888" stroke="#666" stroke-width="1"/>
+  <text x="450" y="89" text-anchor="middle" font-size="9" fill="white">USB-B</text>
+
+  <!-- Digital pins (right side) -->
+  <g fill="#fef3c7" stroke="#d97706" stroke-width="1">
+    <rect x="555" y="145" width="30" height="18" rx="3"/><text x="570" y="158" text-anchor="middle" font-size="10" fill="#92400e">D0</text>
+    <rect x="555" y="170" width="30" height="18" rx="3"/><text x="570" y="183" text-anchor="middle" font-size="10" fill="#92400e">D1</text>
+    <rect x="555" y="195" width="30" height="18" rx="3"/><text x="570" y="208" text-anchor="middle" font-size="10" fill="#92400e">D2</text>
+    <rect x="555" y="220" width="30" height="18" rx="3"/><text x="570" y="233" text-anchor="middle" font-size="10" fill="#92400e">D3</text>
+    <rect x="555" y="270" width="30" height="18" rx="3"/><text x="570" y="283" text-anchor="middle" font-size="10" fill="#92400e">D6</text>
+    <rect x="555" y="295" width="30" height="18" rx="3"/><text x="570" y="308" text-anchor="middle" font-size="10" fill="#92400e">D7</text>
+  </g>
+
+  <!-- Analog pins (left side) -->
+  <g fill="#dbeafe" stroke="#2563eb" stroke-width="1">
+    <rect x="315" y="195" width="30" height="18" rx="3"/><text x="330" y="208" text-anchor="middle" font-size="10" fill="#1e40af">A0</text>
+    <rect x="315" y="220" width="30" height="18" rx="3"/><text x="330" y="233" text-anchor="middle" font-size="10" fill="#1e40af">A1</text>
+    <rect x="315" y="245" width="30" height="18" rx="3"/><text x="330" y="258" text-anchor="middle" font-size="10" fill="#1e40af">A2</text>
+  </g>
+
+  <!-- Power pins (left side) -->
+  <g>
+    <rect x="315" y="145" width="30" height="18" rx="3" fill="#fee2e2" stroke="#dc2626"/><text x="330" y="158" text-anchor="middle" font-size="10" fill="#991b1b">5V</text>
+    <rect x="315" y="170" width="30" height="18" rx="3" fill="#1a1a1a" stroke="#333"/><text x="330" y="183" text-anchor="middle" font-size="10" fill="white">GND</text>
+  </g>
+
+  <!--  MAX485 MODULE-->
+  <rect x="640" y="110" width="220" height="170" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="750" y="132" text-anchor="middle" font-size="13" font-weight="bold" fill="#854d0e">MAX485 RS-485 Module</text>
+  <text x="750" y="148" text-anchor="middle" font-size="10" fill="#a16207">Modbus RTU Interface</text>
+
+  <!-- MAX485 pins -->
+  <text x="660" y="172" font-size="11" fill="#854d0e" font-weight="bold">RO</text>
+  <text x="660" y="192" font-size="11" fill="#854d0e" font-weight="bold">DI</text>
+  <text x="660" y="212" font-size="11" fill="#854d0e" font-weight="bold">DE+RE</text>
+  <text x="660" y="232" font-size="11" fill="#854d0e" font-weight="bold">VCC</text>
+  <text x="660" y="252" font-size="11" fill="#854d0e" font-weight="bold">GND</text>
+
+  <!-- MAX485 output terminals -->
+  <text x="810" y="190" font-size="11" fill="#854d0e" font-weight="bold">A ●</text>
+  <text x="810" y="215" font-size="11" fill="#854d0e" font-weight="bold">B ●</text>
+
+  <!-- Wires: Uno → MAX485 -->
+  <line x1="585" y1="154" x2="655" y2="166" stroke="#d97706" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="615" y="150" font-size="9" fill="#d97706">RX(D0)→RO</text>
+
+  <line x1="585" y1="179" x2="655" y2="186" stroke="#d97706" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="615" y="175" font-size="9" fill="#d97706">TX(D1)→DI</text>
+
+  <line x1="585" y1="204" x2="655" y2="206" stroke="#d97706" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="610" y="200" font-size="9" fill="#d97706">D2→DE+RE</text>
+
+  <!-- Power to MAX485 -->
+  <line x1="315" y1="154" x2="280" y2="154" stroke="#dc2626" stroke-width="2"/>
+  <line x1="280" y1="154" x2="280" y2="60" stroke="#dc2626" stroke-width="2"/>
+  <line x1="280" y1="60" x2="750" y2="60" stroke="#dc2626" stroke-width="2"/>
+  <line x1="750" y1="60" x2="750" y2="226" stroke="#dc2626" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="660" y="72" font-size="9" fill="#dc2626">5V power rail</text>
+
+  <line x1="315" y1="179" x2="290" y2="179" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="179" x2="290" y2="510" stroke="#333" stroke-width="2"/>
+  <line x1="290" y1="510" x2="760" y2="510" stroke="#333" stroke-width="2"/>
+  <line x1="760" y1="510" x2="760" y2="246" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="660" y="505" font-size="9" fill="#333">GND rail</text>
+
+  <!-- RS-485 Bus output arrow -->
+  <line x1="845" y1="190" x2="880" y2="190" stroke="#ca8a04" stroke-width="3"/>
+  <line x1="845" y1="210" x2="880" y2="210" stroke="#ca8a04" stroke-width="3"/>
+  <rect x="872" y="175" width="20" height="50" rx="4" fill="none" stroke="#ca8a04" stroke-width="2" stroke-dasharray="4"/>
+  <text x="450" y="560" text-anchor="middle" font-size="10" fill="#ca8a04">→ Twisted pair to PLC 1 MAX485 A/B (120Ω termination if long cable)</text>
+
+  <!--  SENSORS-->
+
+  <!-- Ultrasonic Sensor -->
+  <rect x="40" y="280" width="190" height="80" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="135" y="300" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">Ultrasonic Sensor</text>
+  <text x="135" y="316" text-anchor="middle" font-size="10" fill="#15803d">HC-SR04 (Tank Level)</text>
+  <text x="60" y="336" font-size="10" fill="#166534">TRIG → D7</text>
+  <text x="60" y="350" font-size="10" fill="#166534">ECHO → D6</text>
+
+  <line x1="230" y1="330" x2="555" y2="304" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="230" y1="345" x2="555" y2="279" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Water Level Sensor -->
+  <rect x="40" y="170" width="190" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="135" y="192" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">Water Level Sensor</text>
+  <text x="60" y="218" font-size="10" fill="#166534">S → A0</text>
+
+  <line x1="230" y1="204" x2="315" y2="204" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Temperature Sensor -->
+  <rect x="40" y="90" width="190" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="135" y="112" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">Temperature Sensor</text>
+  <text x="60" y="138" font-size="10" fill="#166534">OUT → A1</text>
+
+  <line x1="230" y1="120" x2="260" y2="120" stroke="#16a34a" stroke-width="2"/>
+  <line x1="260" y1="120" x2="260" y2="229" stroke="#16a34a" stroke-width="2"/>
+  <line x1="260" y1="229" x2="315" y2="229" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Sound Sensor -->
+  <rect x="40" y="380" width="190" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="135" y="402" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">Sound Sensor</text>
+  <text x="60" y="428" font-size="10" fill="#166534">OUT → A2</text>
+
+  <line x1="230" y1="410" x2="270" y2="410" stroke="#16a34a" stroke-width="2"/>
+  <line x1="270" y1="410" x2="270" y2="254" stroke="#16a34a" stroke-width="2"/>
+  <line x1="270" y1="254" x2="315" y2="254" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Motion Sensor (PIR) -->
+  <rect x="640" y="310" width="220" height="60" rx="8" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="750" y="332" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">PIR Motion Sensor</text>
+  <text x="660" y="358" font-size="10" fill="#166534">OUT → D3</text>
+
+  <line x1="640" y1="340" x2="585" y2="229" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Power note -->
+  <text x="135" y="465" text-anchor="middle" font-size="10" fill="#666">All sensors: VCC→5V, GND→GND</text>
+  <text x="135" y="478" text-anchor="middle" font-size="10" fill="#666">(via breadboard power rails)</text>
+
+  <!-- Legend -->
+  <rect x="30" y="530" width="840" height="50" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="50" y="548" font-size="10" fill="#333" font-weight="bold">NOTES:</text>
+  <text x="50" y="564" font-size="10" fill="#666">D0/D1 (Serial) used for Modbus RTU — USB debug unavailable during operation. Disconnect MAX485 from D0/D1 before uploading firmware.</text>
+
+  <!-- Color legend -->
+  <rect x="640" y="400" width="12" height="12" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="658" y="411" font-size="10" fill="#854d0e">RS-485 / Modbus RTU</text>
+  <rect x="640" y="418" width="12" height="12" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="658" y="429" font-size="10" fill="#166534">Sensors</text>
+  <rect x="640" y="436" width="12" height="12" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="658" y="447" font-size="10" fill="#dc2626">5V Power</text>
+  <rect x="640" y="454" width="12" height="12" fill="#1a1a1a" stroke="#333"/>
+  <text x="658" y="465" font-size="10" fill="#333">GND</text>
+</svg>

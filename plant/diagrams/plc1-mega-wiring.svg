@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 750" font-family="Consolas, monospace" font-size="12">
+  <title>PLC 1 — Arduino Mega 2560 Process Controller Wiring</title>
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#333"/></marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1100" height="750" fill="#fafafa" rx="8"/>
+
+  <!-- Title -->
+  <text x="550" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#1a1a1a">PLC 1 — Arduino Mega 2560 (Process Controller)</text>
+  <text x="550" y="46" text-anchor="middle" font-size="11" fill="#666">Modbus TCP Server (port 502) + Modbus RTU Master — IP: 192.168.1.20</text>
+
+  <!--  MEGA BOARD-->
+  <rect x="350" y="65" width="400" height="490" rx="14" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+  <rect x="360" y="75" width="380" height="470" rx="10" fill="#1e40af"/>
+  <text x="550" y="100" text-anchor="middle" font-size="16" font-weight="bold" fill="white">Arduino Mega 2560</text>
+  <text x="550" y="116" text-anchor="middle" font-size="10" fill="#93c5fd">ATmega2560</text>
+
+  <!-- USB -->
+  <rect x="510" y="58" width="80" height="16" rx="3" fill="#888" stroke="#666"/><text x="550" y="71" text-anchor="middle" font-size="8" fill="white">USB-B</text>
+
+  <!-- RIGHT SIDE PINS-->
+  <!-- Digital pins used -->
+  <g fill="#fef3c7" stroke="#d97706" stroke-width="1">
+    <rect x="718" y="135" width="28" height="16" rx="2"/><text x="732" y="147" text-anchor="middle" font-size="9" fill="#92400e">D2</text>
+    <rect x="718" y="160" width="28" height="16" rx="2"/><text x="732" y="172" text-anchor="middle" font-size="9" fill="#92400e">D5</text>
+    <rect x="718" y="185" width="28" height="16" rx="2"/><text x="732" y="197" text-anchor="middle" font-size="9" fill="#92400e">D8</text>
+    <rect x="718" y="210" width="28" height="16" rx="2"/><text x="732" y="222" text-anchor="middle" font-size="9" fill="#92400e">D9</text>
+    <rect x="718" y="235" width="28" height="16" rx="2"/><text x="732" y="247" text-anchor="middle" font-size="9" fill="#92400e">D10</text>
+    <rect x="718" y="260" width="28" height="16" rx="2"/><text x="732" y="272" text-anchor="middle" font-size="9" fill="#92400e">D12</text>
+  </g>
+
+  <!-- Serial1 pins -->
+  <g fill="#e0e7ff" stroke="#4f46e5" stroke-width="1">
+    <rect x="718" y="295" width="28" height="16" rx="2"/><text x="732" y="307" text-anchor="middle" font-size="9" fill="#3730a3">D18</text>
+    <rect x="718" y="320" width="28" height="16" rx="2"/><text x="732" y="332" text-anchor="middle" font-size="9" fill="#3730a3">D19</text>
+  </g>
+
+  <!-- LEFT SIDE PINS-->
+  <!-- LCD pins -->
+  <g fill="#fce7f3" stroke="#db2777" stroke-width="1">
+    <rect x="354" y="160" width="28" height="16" rx="2"/><text x="368" y="172" text-anchor="middle" font-size="9" fill="#9d174d">D22</text>
+    <rect x="354" y="185" width="28" height="16" rx="2"/><text x="368" y="197" text-anchor="middle" font-size="9" fill="#9d174d">D23</text>
+    <rect x="354" y="210" width="28" height="16" rx="2"/><text x="368" y="222" text-anchor="middle" font-size="9" fill="#9d174d">D24</text>
+    <rect x="354" y="235" width="28" height="16" rx="2"/><text x="368" y="247" text-anchor="middle" font-size="9" fill="#9d174d">D25</text>
+    <rect x="354" y="260" width="28" height="16" rx="2"/><text x="368" y="272" text-anchor="middle" font-size="9" fill="#9d174d">D26</text>
+    <rect x="354" y="285" width="28" height="16" rx="2"/><text x="368" y="297" text-anchor="middle" font-size="9" fill="#9d174d">D27</text>
+  </g>
+
+  <!-- SPI pins -->
+  <g fill="#dbeafe" stroke="#2563eb" stroke-width="1">
+    <rect x="354" y="340" width="28" height="16" rx="2"/><text x="368" y="352" text-anchor="middle" font-size="9" fill="#1e40af">D50</text>
+    <rect x="354" y="365" width="28" height="16" rx="2"/><text x="368" y="377" text-anchor="middle" font-size="9" fill="#1e40af">D51</text>
+    <rect x="354" y="390" width="28" height="16" rx="2"/><text x="368" y="402" text-anchor="middle" font-size="9" fill="#1e40af">D52</text>
+    <rect x="354" y="415" width="28" height="16" rx="2"/><text x="368" y="427" text-anchor="middle" font-size="9" fill="#1e40af">D53</text>
+  </g>
+
+  <!-- Power pins -->
+  <g>
+    <rect x="354" y="135" width="28" height="16" rx="2" fill="#fee2e2" stroke="#dc2626"/><text x="368" y="147" text-anchor="middle" font-size="9" fill="#991b1b">5V</text>
+    <rect x="718" y="135" width="0" height="0"/>
+    <rect x="354" y="455" width="28" height="16" rx="2" fill="#1a1a1a" stroke="#333"/><text x="368" y="467" text-anchor="middle" font-size="9" fill="white">GND</text>
+    <rect x="354" y="480" width="28" height="16" rx="2" fill="#fef3c7" stroke="#f59e0b"/><text x="368" y="492" text-anchor="middle" font-size="9" fill="#92400e">3.3V</text>
+  </g>
+
+  <!-- Pin labels inside board -->
+  <g font-size="9" fill="#93c5fd">
+    <text x="700" y="147" text-anchor="end">MAX485 DE+RE</text>
+    <text x="700" y="172" text-anchor="end">RFID RST</text>
+    <text x="700" y="197" text-anchor="end">PUMP RELAY</text>
+    <text x="700" y="222" text-anchor="end">SERVO (VALVE)</text>
+    <text x="700" y="247" text-anchor="end">W5500 CS (ETH)</text>
+    <text x="700" y="272" text-anchor="end">BUZZER</text>
+    <text x="700" y="307" text-anchor="end">Serial1 TX1</text>
+    <text x="700" y="332" text-anchor="end">Serial1 RX1</text>
+
+    <text x="395" y="172" >LCD RS</text>
+    <text x="395" y="197" >LCD E</text>
+    <text x="395" y="222" >LCD D4</text>
+    <text x="395" y="247" >LCD D5</text>
+    <text x="395" y="272" >LCD D6</text>
+    <text x="395" y="297" >LCD D7</text>
+    <text x="395" y="352" >SPI MISO</text>
+    <text x="395" y="377" >SPI MOSI</text>
+    <text x="395" y="402" >SPI SCK</text>
+    <text x="395" y="427" >RFID SS (CS)</text>
+  </g>
+
+  <!--  W5500 ETHERNET MODULE-->
+  <rect x="790" y="200" width="270" height="140" rx="8" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="925" y="222" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e40af">W5500 Ethernet Module</text>
+  <text x="925" y="238" text-anchor="middle" font-size="10" fill="#3b82f6">Modbus TCP — port 502</text>
+
+  <text x="810" y="260" font-size="10" fill="#1e40af">CS   ← D10</text>
+  <text x="810" y="275" font-size="10" fill="#1e40af">MOSI ← D51 (shared SPI)</text>
+  <text x="810" y="290" font-size="10" fill="#1e40af">MISO ← D50 (shared SPI)</text>
+  <text x="810" y="305" font-size="10" fill="#1e40af">SCK  ← D52 (shared SPI)</text>
+  <text x="810" y="320" font-size="10" fill="#1e40af">5V, GND</text>
+
+  <!-- RJ45 port on W5500 -->
+  <rect x="1010" y="255" width="50" height="35" rx="4" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+  <text x="1035" y="277" text-anchor="middle" font-size="9" font-weight="bold" fill="#475569">RJ45</text>
+
+  <!-- Wire: D10 → W5500 CS -->
+  <line x1="746" y1="243" x2="790" y2="254" stroke="#2563eb" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!--  MAX485 RS-485 MODULE-->
+  <rect x="790" y="80" width="270" height="105" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="925" y="102" text-anchor="middle" font-size="13" font-weight="bold" fill="#854d0e">MAX485 RS-485 Module</text>
+  <text x="925" y="118" text-anchor="middle" font-size="10" fill="#a16207">Modbus RTU Master</text>
+
+  <text x="810" y="140" font-size="10" fill="#854d0e">DI   ← TX1 (D18)</text>
+  <text x="810" y="155" font-size="10" fill="#854d0e">RO   → RX1 (D19)</text>
+  <text x="810" y="170" font-size="10" fill="#854d0e">DE+RE ← D2</text>
+
+  <!-- RS-485 terminals -->
+  <rect x="1020" y="128" width="40" height="40" rx="4" fill="#fef9c3" stroke="#ca8a04" stroke-width="2"/>
+  <text x="1040" y="146" text-anchor="middle" font-size="10" font-weight="bold" fill="#854d0e">A</text>
+  <text x="1040" y="162" text-anchor="middle" font-size="10" font-weight="bold" fill="#854d0e">B</text>
+
+  <!-- Wires: Serial1 → MAX485 -->
+  <line x1="746" y1="303" x2="770" y2="303" stroke="#4f46e5" stroke-width="2"/>
+  <line x1="770" y1="303" x2="770" y2="140" stroke="#4f46e5" stroke-width="2"/>
+  <line x1="770" y1="140" x2="790" y2="140" stroke="#4f46e5" stroke-width="2" marker-end="url(#arr)"/>
+
+  <line x1="746" y1="328" x2="780" y2="328" stroke="#4f46e5" stroke-width="2"/>
+  <line x1="780" y1="328" x2="780" y2="155" stroke="#4f46e5" stroke-width="2"/>
+  <line x1="780" y1="155" x2="790" y2="155" stroke="#4f46e5" stroke-width="2" marker-end="url(#arr)"/>
+
+  <line x1="746" y1="143" x2="760" y2="143" stroke="#d97706" stroke-width="2"/>
+  <line x1="760" y1="143" x2="760" y2="96" stroke="#d97706" stroke-width="2"/>
+  <line x1="760" y1="96" x2="790" y2="170" stroke="#d97706" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!--  ACTUATORS-->
+
+  <!-- Relay (Pump) -->
+  <rect x="790" y="370" width="270" height="80" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+  <text x="925" y="392" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">Relay Module (Pump)</text>
+  <text x="810" y="415" font-size="10" fill="#9d174d">IN ← D8</text>
+  <text x="810" y="430" font-size="10" fill="#9d174d">COM→power+, NO→motor+, motor-→GND</text>
+  <text x="810" y="443" font-size="10" fill="#9d174d">HIGH = pump ON</text>
+
+  <line x1="746" y1="193" x2="785" y2="193" stroke="#ec4899" stroke-width="2"/>
+  <line x1="785" y1="193" x2="785" y2="408" stroke="#ec4899" stroke-width="2"/>
+  <line x1="785" y1="408" x2="790" y2="408" stroke="#ec4899" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Servo (Valve) -->
+  <rect x="790" y="465" width="270" height="60" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+  <text x="925" y="487" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">Servo Motor (Valve)</text>
+  <text x="810" y="510" font-size="10" fill="#9d174d">Signal ← D9 | Red→5V | Brown→GND</text>
+
+  <line x1="746" y1="218" x2="775" y2="218" stroke="#ec4899" stroke-width="2"/>
+  <line x1="775" y1="218" x2="775" y2="487" stroke="#ec4899" stroke-width="2"/>
+  <line x1="775" y1="487" x2="790" y2="487" stroke="#ec4899" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Buzzer -->
+  <rect x="790" y="540" width="270" height="50" rx="8" fill="#fce7f3" stroke="#ec4899" stroke-width="2"/>
+  <text x="925" y="560" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">Buzzer (Alarm)</text>
+  <text x="810" y="580" font-size="10" fill="#9d174d">+ ← D12 | - → GND</text>
+
+  <line x1="746" y1="268" x2="765" y2="268" stroke="#ec4899" stroke-width="2"/>
+  <line x1="765" y1="268" x2="765" y2="560" stroke="#ec4899" stroke-width="2"/>
+  <line x1="765" y1="560" x2="790" y2="560" stroke="#ec4899" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!--  LCD-->
+  <rect x="40" y="130" width="270" height="190" rx="8" fill="#fce7f3" stroke="#db2777" stroke-width="2"/>
+  <text x="175" y="155" text-anchor="middle" font-size="13" font-weight="bold" fill="#9d174d">LCD 16x2 (HMI Panel)</text>
+
+  <text x="60" y="180" font-size="10" fill="#9d174d">RS  ← D22</text>
+  <text x="60" y="196" font-size="10" fill="#9d174d">E   ← D23</text>
+  <text x="60" y="212" font-size="10" fill="#9d174d">D4  ← D24</text>
+  <text x="60" y="228" font-size="10" fill="#9d174d">D5  ← D25</text>
+  <text x="60" y="244" font-size="10" fill="#9d174d">D6  ← D26</text>
+  <text x="60" y="260" font-size="10" fill="#9d174d">D7  ← D27</text>
+  <text x="60" y="280" font-size="10" fill="#9d174d">VSS→GND  VDD→5V  RW→GND</text>
+  <text x="60" y="296" font-size="10" fill="#9d174d">VO→10kΩ pot (contrast)</text>
+
+  <!-- Display content -->
+  <rect x="170" y="172" width="120" height="40" rx="3" fill="#1a1a1a"/>
+  <text x="180" y="189" font-size="9" fill="#7fff00">L:45% P:ON</text>
+  <text x="180" y="203" font-size="9" fill="#7fff00">V:120 T:23</text>
+
+  <!-- Wires: LCD → Mega -->
+  <line x1="310" y1="168" x2="354" y2="168" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="193" x2="354" y2="193" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="218" x2="354" y2="218" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="243" x2="354" y2="243" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="268" x2="354" y2="268" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="293" x2="354" y2="293" stroke="#db2777" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!--  RFID-->
+  <rect x="40" y="360" width="270" height="120" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text x="175" y="385" text-anchor="middle" font-size="13" font-weight="bold" fill="#5b21b6">MFRC522 RFID Reader</text>
+  <text x="175" y="400" text-anchor="middle" font-size="10" fill="#7c3aed">Operator Authentication (30s timeout)</text>
+
+  <text x="60" y="425" font-size="10" fill="#5b21b6">SDA  ← D53 (RFID CS)</text>
+  <text x="60" y="441" font-size="10" fill="#5b21b6">SCK  ← D52 (shared SPI)</text>
+  <text x="60" y="457" font-size="10" fill="#5b21b6">MOSI ← D51 (shared SPI)</text>
+  <text x="60" y="473" font-size="10" fill="#5b21b6">MISO ← D50 (shared SPI)</text>
+
+  <!-- Wires: RFID → Mega SPI -->
+  <line x1="310" y1="418" x2="354" y2="423" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="434" x2="354" y2="398" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="450" x2="354" y2="373" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="310" y1="466" x2="354" y2="348" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr)"/>
+
+  <text x="60" y="470" font-size="10" fill="#5b21b6">RST  ← D5  |  3.3V  |  GND</text>
+
+  <!--  SPI SHARING NOTE-->
+  <rect x="40" y="500" width="270" height="55" rx="6" fill="#f1f5f9" stroke="#94a3b8"/>
+  <text x="175" y="518" text-anchor="middle" font-size="10" font-weight="bold" fill="#475569">SPI Bus Sharing</text>
+  <text x="55" y="534" font-size="9" fill="#64748b">D50/D51/D52 shared by W5500 + RFID</text>
+  <text x="55" y="546" font-size="9" fill="#64748b">Different CS: W5500=D10, RFID=D53</text>
+
+  <!--  LEGEND-->
+  <rect x="40" y="610" width="1020" height="110" rx="8" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+  <text x="60" y="632" font-size="12" font-weight="bold" fill="#333">LEGEND</text>
+
+  <rect x="60" y="645" width="14" height="14" rx="2" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="82" y="657" font-size="10" fill="#854d0e">RS-485 / Modbus RTU (Serial1)</text>
+
+  <rect x="60" y="665" width="14" height="14" rx="2" fill="#dbeafe" stroke="#2563eb"/>
+  <text x="82" y="677" font-size="10" fill="#1e40af">W5500 Ethernet / Modbus TCP (SPI)</text>
+
+  <rect x="60" y="685" width="14" height="14" rx="2" fill="#fce7f3" stroke="#ec4899"/>
+  <text x="82" y="697" font-size="10" fill="#9d174d">Actuators + LCD HMI</text>
+
+  <rect x="350" y="645" width="14" height="14" rx="2" fill="#ede9fe" stroke="#7c3aed"/>
+  <text x="372" y="657" font-size="10" fill="#5b21b6">RFID Authentication (SPI)</text>
+
+  <rect x="350" y="665" width="14" height="14" rx="2" fill="#e0e7ff" stroke="#4f46e5"/>
+  <text x="372" y="677" font-size="10" fill="#3730a3">Serial1 TX1/RX1 (Modbus RTU)</text>
+
+  <!-- Valve positions note -->
+  <text x="650" y="657" font-size="10" fill="#666">Valve: 120° (pump ON) / 40° (pump OFF)</text>
+  <text x="650" y="677" font-size="10" fill="#666">Pump: ON when tank &lt; 30%, OFF when tank &gt; 85%</text>
+  <text x="650" y="697" font-size="10" fill="#666">Temp alarm: ADC &gt; 700 | RFID auth timeout: 30s</text>
+</svg>
