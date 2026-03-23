@@ -120,21 +120,24 @@ P_BR="${PANES[3]}"   # bottom-right → Attack Runner
 #  Start services
 # ----------------------------------------------------------
 
-# Top-left — Dashboard
-tmux send-keys -t "$P_TL" \
-  "cd '$REPO/plant/dashboard' && python3 app.py" Enter
+# Commands that need user Python packages run as the real user
+RUN_AS="sudo -u $REAL_USER"
 
-# Bottom-left — tcpdump
+# Top-left — Dashboard (needs fastapi — run as user)
+tmux send-keys -t "$P_TL" \
+  "cd '$REPO/plant/dashboard' && $RUN_AS python3 app.py" Enter
+
+# Bottom-left — tcpdump (needs root)
 tmux send-keys -t "$P_BL" \
   "tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
 
-# Top-right — IDS Monitor
+# Top-right — IDS Monitor (needs root for packet capture)
 tmux send-keys -t "$P_TR" \
   "cd '$REPO/ids' && ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
-# Bottom-right — Attack runner
+# Bottom-right — Attack runner (needs pymodbus — run as user)
 tmux send-keys -t "$P_BR" \
-  "python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$RUN_DIR' --repo-dir '$REPO'" Enter
+  "$RUN_AS python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$RUN_DIR' --repo-dir '$REPO'" Enter
 
 # Focus attack runner pane
 tmux select-pane -t "$P_BR"
