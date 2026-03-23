@@ -59,11 +59,18 @@ fi
 echo "[+] All prerequisites OK"
 
 # ----------------------------------------------------------
-#  Evidence directories
+#  Evidence directories (timestamped per run)
 # ----------------------------------------------------------
-mkdir -p "$EVIDENCE"/{pcaps,logs,screenshots}
-rm -f "$EVIDENCE/logs/alerts.jsonl"   # fresh investigation
-echo "[+] Evidence dir: $EVIDENCE"
+RUN_TS="$(date +%Y%m%d-%H%M%S)"
+RUN_DIR="$EVIDENCE/run-$RUN_TS"
+mkdir -p "$RUN_DIR"/{pcaps,logs}
+mkdir -p "$EVIDENCE/screenshots"
+
+# Symlink "latest" for easy access
+ln -sfn "run-$RUN_TS" "$EVIDENCE/latest"
+
+echo "[+] Evidence dir: $RUN_DIR"
+echo "[+] Symlink:      $EVIDENCE/latest -> run-$RUN_TS"
 
 # ----------------------------------------------------------
 #  Sudo credentials
@@ -108,15 +115,15 @@ tmux send-keys -t "$TGT.1" \
 
 # Bottom-left — tcpdump
 tmux send-keys -t "$TGT.4" \
-  "sudo tcpdump -i lo tcp port 5502 -w '$EVIDENCE/pcaps/full-session.pcap' -U" Enter
+  "sudo tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
 
 # Top-right — IDS Monitor
 tmux send-keys -t "$TGT.2" \
-  "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$EVIDENCE/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
+  "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
 # Bottom-right — Attack runner
 tmux send-keys -t "$TGT.3" \
-  "python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$EVIDENCE' --repo-dir '$REPO'" Enter
+  "python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$RUN_DIR' --repo-dir '$REPO'" Enter
 
 # Focus attack runner pane
 tmux select-pane -t "$TGT.3"
