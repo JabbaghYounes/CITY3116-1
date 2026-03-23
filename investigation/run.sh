@@ -74,6 +74,7 @@ RUN_TS="$(date +%Y%m%d-%H%M%S)"
 RUN_DIR="$EVIDENCE/run-$RUN_TS"
 mkdir -p "$RUN_DIR"/{pcaps,logs}
 mkdir -p "$EVIDENCE/screenshots"
+chown -R "$REAL_USER":"$REAL_USER" "$EVIDENCE"
 
 # Symlink "latest" for easy access
 ln -sfn "run-$RUN_TS" "$EVIDENCE/latest"
