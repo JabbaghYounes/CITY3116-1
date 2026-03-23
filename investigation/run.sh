@@ -133,8 +133,11 @@ tmux send-keys -t "$P_BL" \
   "tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
 
 # Top-right — IDS Monitor (needs root for packet capture)
+# Set PYTHONPATH so the monitor's Python subprocess can find user-installed packages
+# (onnxruntime is in ~/.local/lib/python3.*/site-packages, invisible to root)
+USER_SITE="$(sudo -u "$REAL_USER" python3 -m site --user-site 2>/dev/null)"
 tmux send-keys -t "$P_TR" \
-  "cd '$REPO/ids' && ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
+  "cd '$REPO/ids' && PYTHONPATH='$USER_SITE' ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
 # Bottom-right — Attack runner (needs pymodbus — run as user)
 tmux send-keys -t "$P_BR" \
