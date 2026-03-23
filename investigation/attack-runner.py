@@ -87,13 +87,13 @@ def api_get(path):
         return None
 
 
-def api_post(path):
+def api_post(path, timeout=15):
     try:
         req = Request(f"{DASHBOARD_URL}{path}", data=b"", method="POST")
         req.add_header("Content-Type", "application/json")
-        with urlopen(req, timeout=5) as r:
+        with urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
-    except (URLError, Exception):
+    except (URLError, Exception) as e:
         return None
 
 
@@ -110,12 +110,18 @@ def wait_for_dashboard(timeout=60):
 
 
 def start_simulation():
-    print("[*] Starting plant simulation via dashboard API ...")
-    result = api_post("/api/simulation/start")
-    if result and result.get("status") in ("started", "already_running"):
-        print(f"[+] Simulation running (PLC1 on port {PLC_PORT})")
-        return True
-    print(f"[!] Failed to start simulation: {result}")
+    """Start simulation with retries (subprocess startup takes ~6s)."""
+    for attempt in range(3):
+        print(f"[*] Starting plant simulation via dashboard API (attempt {attempt + 1}/3) ...")
+        result = api_post("/api/simulation/start", timeout=20)
+        if result and result.get("status") in ("started", "already_running"):
+            print(f"[+] Simulation running (PLC1 on port {PLC_PORT})")
+            # Give subprocesses time to bind ports
+            time.sleep(3)
+            return True
+        print(f"[!] Attempt {attempt + 1} failed: {result}")
+        time.sleep(2)
+    print("[!] Failed to start simulation after 3 attempts")
     return False
 
 
