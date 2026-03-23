@@ -100,42 +100,44 @@ export TERM="${TERM/ghostty/256color}"
 [[ "$TERM" == *256color* || "$TERM" == screen* || "$TERM" == tmux* ]] || export TERM=xterm-256color
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 
-tmux new-session  -d -s "$SESSION"              # pane 1 (full window)
-tmux split-window -h -t "$SESSION"              # pane 1=left, 2=right
-tmux split-window -v -t "$SESSION"              # split right → 2=top-right, 3=bottom-right
-tmux select-pane  -L -t "$SESSION"              # move to left pane (1)
-tmux split-window -v -t "$SESSION"              # split left → 1=top-left, 4=bottom-left
+# Create session and 2x2 grid, capturing actual pane IDs
+tmux new-session -d -s "$SESSION" -P -F '#{pane_id}' > /dev/null
+tmux split-window -h -t "$SESSION"
+tmux split-window -v -t "$SESSION"
+tmux select-pane  -L -t "$SESSION"
+tmux split-window -v -t "$SESSION"
 
-# Pane layout:
-#   .1 = top-left      → Dashboard
-#   .2 = top-right     → IDS Monitor
-#   .4 = bottom-left   → tcpdump
-#   .3 = bottom-right  → Attack Runner
+# Read the actual pane IDs by position (top/left coordinates)
+# Sort: top-left, top-right, bottom-left, bottom-right
+mapfile -t PANES < <(tmux list-panes -t "$SESSION" -F '#{pane_top} #{pane_left} #{pane_id}' | sort -n -k1 -k2 | awk '{print $3}')
 
-TGT="$SESSION"
+P_TL="${PANES[0]}"   # top-left     → Dashboard
+P_TR="${PANES[1]}"   # top-right    → IDS Monitor
+P_BL="${PANES[2]}"   # bottom-left  → tcpdump
+P_BR="${PANES[3]}"   # bottom-right → Attack Runner
 
 # ----------------------------------------------------------
 #  Start services
 # ----------------------------------------------------------
 
 # Top-left — Dashboard
-tmux send-keys -t "$TGT.1" \
+tmux send-keys -t "$P_TL" \
   "cd '$REPO/plant/dashboard' && python3 app.py" Enter
 
 # Bottom-left — tcpdump
-tmux send-keys -t "$TGT.4" \
+tmux send-keys -t "$P_BL" \
   "tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
 
 # Top-right — IDS Monitor
-tmux send-keys -t "$TGT.2" \
+tmux send-keys -t "$P_TR" \
   "cd '$REPO/ids' && ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
 # Bottom-right — Attack runner
-tmux send-keys -t "$TGT.3" \
+tmux send-keys -t "$P_BR" \
   "python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$RUN_DIR' --repo-dir '$REPO'" Enter
 
 # Focus attack runner pane
-tmux select-pane -t "$TGT.3"
+tmux select-pane -t "$P_BR"
 
 echo
 echo "[+] tmux session '$SESSION' created"
