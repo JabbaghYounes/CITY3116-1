@@ -9,6 +9,7 @@
 //!     --model ../pytorch-train/data/models/model-b/cnn_lstm_model.onnx \
 //!     --scaler ../pytorch-train/data/models/model-b/scaler.json
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -231,7 +232,7 @@ fn ml_prediction_to_alert(pred: &Prediction, flow: &FlowRecord) -> Alert {
             flow.packet_count,
         ),
         confidence: pred.confidence,
-        model_source: "cnn-lstm/model-b".into(),
+        model_source: format!("cnn-lstm/{}", pred.model_source),
         source_ip: Some(flow.key.src_ip),
         dest_ip: Some(flow.key.dst_ip),
         source_port: Some(flow.key.src_port),
@@ -323,6 +324,10 @@ async fn main() -> Result<()> {
         tokio::signal::ctrl_c().await.ok();
         r.store(false, Ordering::SeqCst);
     });
+
+    // Track which flows have already been ML-classified (avoid duplicates)
+    let mut ml_classified_flows: HashSet<ids_common::types::FlowKey> = HashSet::new();
+    let mut last_ml_scan = Utc::now();
 
     // Stats
     let mut total_packets: u64 = 0;
@@ -553,7 +558,52 @@ async fn main() -> Result<()> {
                     println!("  -> classifier not loaded, skipping ML");
                 }
             }
+            // Clean up classified flow tracker for expired flows
+            for flow in &expired {
+                ml_classified_flows.remove(&flow.key);
+            }
             last_expire = now;
+        }
+
+        // Time-windowed ML inference on ACTIVE flows (bypasses expiry bottleneck)
+        if (now - last_ml_scan).num_seconds() > 10 {
+            if let Some(ref mut clf) = classifier {
+                let snapshots = flow_table.snapshot_flows_with_min_packets(10);
+                for flow in &snapshots {
+                    if ml_classified_flows.contains(&flow.key) {
+                        continue;
+                    }
+                    let features = extract_cicids_features(flow);
+                    ml_inferences += 1;
+                    match clf.predict(&features) {
+                        Ok(pred) => {
+                            println!(
+                                "[ML-SCAN] {}:{} -> {}:{} pkts={} => {:?} ({:.1}%) [{}]",
+                                flow.key.src_ip, flow.key.src_port,
+                                flow.key.dst_ip, flow.key.dst_port,
+                                flow.packet_count,
+                                pred.category,
+                                pred.confidence * 100.0,
+                                pred.model_source,
+                            );
+                            ml_classified_flows.insert(flow.key.clone());
+                            if pred.category != AttackCategory::Normal
+                                && pred.confidence >= ml_threshold
+                            {
+                                ml_detections += 1;
+                                let alert = ml_prediction_to_alert(&pred, flow);
+                                print_alert(&alert);
+                                logger.log_alert(&alert).await?;
+                                alerts_generated += 1;
+                            }
+                        }
+                        Err(e) => {
+                            warn!(error = %e, "ML scan inference failed");
+                        }
+                    }
+                }
+            }
+            last_ml_scan = now;
         }
 
         // Periodic stats

@@ -22,7 +22,7 @@ const CLASS_NAMES: [AttackCategory; 5] = [
     AttackCategory::U2R,
 ];
 
-/// Prediction result from the CNN+LSTM model.
+/// Prediction result from the ML inference pipeline.
 #[derive(Debug, Clone)]
 pub struct Prediction {
     /// Predicted attack category.
@@ -31,6 +31,8 @@ pub struct Prediction {
     pub confidence: f64,
     /// Index of the predicted class.
     pub class_index: usize,
+    /// Which model produced this prediction ("cnn-lstm" or "modbus-anomaly").
+    pub model_source: String,
 }
 
 /// CNN+LSTM model wrapper that delegates inference to a Python subprocess.
@@ -156,10 +158,17 @@ impl CnnLstmClassifier {
             AttackCategory::Unknown
         };
 
+        let model_source = resp
+            .get("model")
+            .and_then(|v| v.as_str())
+            .unwrap_or("cnn-lstm")
+            .to_string();
+
         Ok(Prediction {
             category,
             confidence,
             class_index,
+            model_source,
         })
     }
 }

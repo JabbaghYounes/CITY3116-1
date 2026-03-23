@@ -158,6 +158,18 @@ impl FlowTable {
         self.flows.values().collect()
     }
 
+    /// Return cloned snapshots of active flows with at least `min_packets`.
+    ///
+    /// This avoids borrow conflicts when the caller needs to mutably access
+    /// a classifier while iterating over flows.
+    pub fn snapshot_flows_with_min_packets(&self, min_packets: u64) -> Vec<FlowRecord> {
+        self.flows
+            .values()
+            .filter(|f| f.packet_count >= min_packets)
+            .cloned()
+            .collect()
+    }
+
     /// Return the number of flows currently tracked.
     pub fn len(&self) -> usize {
         self.flows.len()
