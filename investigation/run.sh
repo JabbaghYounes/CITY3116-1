@@ -80,47 +80,46 @@ trap 'kill $SUDO_PID 2>/dev/null' EXIT
 echo "[+] sudo cached"
 
 # ----------------------------------------------------------
-#  tmux session
+#  tmux session — 2x2 grid
 # ----------------------------------------------------------
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 
-# Create session with first pane (will be top-left = Dashboard)
-tmux new-session -d -s "$SESSION" -n main
+tmux new-session  -d -s "$SESSION"              # pane 1 (full window)
+tmux split-window -h -t "$SESSION"              # pane 1=left, 2=right
+tmux split-window -v -t "$SESSION"              # split right → 2=top-right, 3=bottom-right
+tmux select-pane  -L -t "$SESSION"              # move to left pane (1)
+tmux split-window -v -t "$SESSION"              # split left → 1=top-left, 4=bottom-left
 
-# Split into 2x2 grid
-W="$SESSION:main"
-tmux split-window -h  -t "$W"          # right pane (pane 1)
-tmux split-window -v  -t "$W.0"        # bottom-left (pane 2, pushes original 0 up)
-tmux split-window -v  -t "$W.1"        # bottom-right (pane 3, pushes original 1 up)
-
-# After splits the pane layout is:
-#   .0 = top-left      → Dashboard
-#   .1 = top-right     → IDS Monitor
-#   .2 = bottom-left   → tcpdump
+# Pane layout:
+#   .1 = top-left      → Dashboard
+#   .2 = top-right     → IDS Monitor
+#   .4 = bottom-left   → tcpdump
 #   .3 = bottom-right  → Attack Runner
+
+TGT="$SESSION"
 
 # ----------------------------------------------------------
 #  Start services
 # ----------------------------------------------------------
 
 # Top-left — Dashboard
-tmux send-keys -t "$W.0" \
+tmux send-keys -t "$TGT.1" \
   "cd '$REPO/plant/dashboard' && python3 app.py" Enter
 
 # Bottom-left — tcpdump
-tmux send-keys -t "$W.2" \
+tmux send-keys -t "$TGT.4" \
   "sudo tcpdump -i lo tcp port 5502 -w '$EVIDENCE/pcaps/full-session.pcap' -U" Enter
 
 # Top-right — IDS Monitor
-tmux send-keys -t "$W.1" \
+tmux send-keys -t "$TGT.2" \
   "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$EVIDENCE/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 15" Enter
 
-# Bottom-right — Attack runner (waits for dashboard, starts simulation, runs attacks)
-tmux send-keys -t "$W.3" \
+# Bottom-right — Attack runner
+tmux send-keys -t "$TGT.3" \
   "python3 '$REPO/investigation/attack-runner.py' --evidence-dir '$EVIDENCE' --repo-dir '$REPO'" Enter
 
 # Focus attack runner pane
-tmux select-pane -t "$W.3"
+tmux select-pane -t "$TGT.3"
 
 echo
 echo "[+] tmux session '$SESSION' created"
