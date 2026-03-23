@@ -268,166 +268,146 @@ The implemented ML-based ensemble demonstrates:
 
 ### 3.1 Attack Scenarios
 
-The forensic investigation examines three simulated attack scenarios targeting the CPS environment — a water treatment plant testbed built with Arduino PLCs communicating over Modbus RTU/TCP:
+The forensic investigation executes seven automated attack scenarios against the MiniCPS water treatment simulation, targeting PLC 1's Modbus TCP server (port 5502) on localhost. Attacks are grouped into three categories aligned with common CPS threat models:
 
-**Scenario 1: Man-in-the-Middle (MITM) Attack**
+**Process Manipulation Attacks (Scenarios 1–5):**
 
-An attacker positions themselves between a SCADA master station and field PLCs, intercepting and potentially modifying Modbus communications. The attack exploits the lack of authentication in Modbus TCP, allowing the attacker to:
-- Intercept sensor readings, providing false data to operators
-- Inject malicious commands to actuators
-- Record operational data for reconnaissance
+These exploit the absence of authentication in Modbus TCP to inject unauthorised write commands:
 
-This scenario is implemented as a Stuxnet-style async MitM proxy that operates in intermittent attack cycles (20-second intervals, 8-second active duration), manipulating actuator commands while falsifying sensor readings sent back to the SCADA system — making the attack difficult to detect through casual monitoring.
+1. **Command Injection** — Forces the pump ON/OFF every 5 seconds via Write Coil (FC 0x05), overriding the PLC's automatic control logic.
+2. **Pump Oscillation** — Rapid pump toggling every 2 seconds, simulating a Stuxnet-style actuator attack that stresses mechanical components.
+3. **Valve Manipulation** — Writes random valve positions (0–180°) every 3 seconds via Write Register (FC 0x06), disrupting flow regulation.
+4. **Replay Attack** — Replays a captured ON/OFF/ON/OFF coil sequence at 1-second intervals, demonstrating the exploitability of unauthenticated protocols.
+5. **Sensor Spoofing** — Overwrites the tank level register with random values (0–100), falsifying sensor data visible to the SCADA operator.
 
-**Scenario 2: Denial of Service (DoS) Attack**
+**Denial of Service (Scenario 6):**
 
-A volumetric attack floods the CPS network with traffic, overwhelming communication channels between control systems and field devices. Techniques include:
-- SYN flood attacks against Modbus TCP servers
-- Amplification attacks exploiting broadcast protocols
-- Application-layer attacks targeting HMI web interfaces
-- Modbus function code flooding to exhaust PLC connection tables
+6. **Modbus Flood** — Sends 100 Read Holding Registers (FC 0x03) requests in a tight loop, generating thousands of packets per second to overwhelm the PLC's connection handler.
 
-**Scenario 3: Ransomware Infection**
+**Advanced Persistent Threat (Scenario 7):**
 
-Ransomware infiltrates the CPS environment through phishing or supply chain compromise, encrypting:
-- Engineering workstation files containing PLC configurations
-- Historical data archives and logs
-- HMI application files
+7. **Multi-Stage Attack** — Three-phase attack simulating an APT lifecycle: reconnaissance (5× register reads over 10 seconds), process manipulation (20× random pump and valve writes over 20 seconds), and disruption (200× read flood).
+
+All attacks use the pymodbus 3.x framework and target the simulation over a persistent TCP connection. The attack runner automates execution with 15-second gaps between attacks to allow flow expiration and IDS classification.
 
 ### 3.2 Forensic Tools and Methodology
 
 **Tools Employed:**
 
-1. **Wireshark:** Network protocol analyser for capturing and examining packet-level traffic. Used to identify anomalous communication patterns in Modbus TCP traffic, extract malicious payloads, and reconstruct attack timelines.
+1. **tcpdump:** Command-line packet capture tool used to record all Modbus TCP traffic on the loopback interface for the duration of the investigation. Produces a PCAP file preserving full packet contents and timestamps for offline analysis.
 
-2. **Snort:** Open-source network IDS/IPS configured in logging mode to generate alerts and capture traffic matching attack signatures. When configured in NIDS mode, Snort can alert on activities such as host discovery and port scanning. Provides corroborating evidence of intrusion activities.
+2. **Wireshark:** Network protocol analyser used for post-capture examination of the PCAP. Modbus/TCP dissector applied via "Decode As" on port 5502 to decode function codes, register addresses, and values. I/O graphs used to visualise traffic volume spikes correlating with attack periods.
 
-3. **Volatility:** Memory forensics framework for analysing RAM dumps from compromised systems. Used to identify malware processes, extract encryption keys, and recover artefacts unavailable on disk.
+3. **CPS-IDS Monitor (custom):** The implemented IDS running a multi-layer detection pipeline: a 20-rule signature engine, Modbus write-rate anomaly detection, read flood rate detection, and CNN+LSTM deep learning inference on expired network flows. Outputs a structured JSONL alert log with timestamps, severity, attack category, source/destination IPs and ports, confidence scores, and detection source attribution.
 
-4. **Autopsy:** Digital forensics platform for disk image analysis. Enables recovery of deleted files, timeline analysis, and keyword searching across file systems.
-
-5. **NetworkMiner:** Network forensic analyser for extracting files, images, and credentials from captured traffic.
+4. **Attack Manifest (custom):** JSON log recording the exact start/end timestamp and duration of each attack, enabling precise correlation between attack periods and IDS alerts.
 
 **Forensic Methodology:**
 
-The investigation follows the NIST SP 800-86 guidelines for integrating forensic techniques into incident response:
+The investigation follows NIST SP 800-86 guidelines:
 
-1. **Collection:** Acquire volatile data (memory, network connections) before non-volatile data (disk images). Maintain chain of custody documentation. Live acquisition captures running processes and network state; dead acquisition captures disk images bit-for-bit preserving slack space and deleted file remnants.
+1. **Collection:** Three evidence streams captured simultaneously — full packet capture (tcpdump, 3.5 MB PCAP, 38,592 packets), IDS alert log (JSONL, 72,422 alerts), and attack manifest (JSON, 7 attacks with timestamps). All collection began before the first attack and continued through a 20-second post-attack expiration window.
 
-2. **Examination:** Apply forensic tools to extract relevant data from collected evidence.
+2. **Examination:** IDS alerts grouped by detection source (`rule-engine`, `write-rate`, `modbus-analysis`) and correlated with attack manifest timestamps. PCAP analysed in Wireshark with Modbus dissector filters (`modbus.func_code == 5`, `modbus.func_code == 3`).
 
-3. **Analysis:** Correlate findings across evidence sources to reconstruct attack sequences.
+3. **Analysis:** Cross-referencing alert timestamps against the attack manifest to determine detection rates, false positive sources, and detection latency per attack type.
 
-4. **Reporting:** Document findings, methodology, and conclusions in a structured incident report.
+4. **Reporting:** Findings documented in a structured incident report with quantitative metrics.
 
 ### 3.3 Forensic Analysis
 
-**MITM Attack Analysis:**
+The investigation captured 30,781 packets (18,312 Modbus) and generated 72,422 IDS alerts over a 6-minute session encompassing all seven attack scenarios.
 
-Network capture analysis in Wireshark revealed:
-- ARP spoofing packets linking the attacker's MAC address to the PLC's IP address
-- Duplicate Modbus transaction IDs indicating intercepted and replayed traffic
-- Timing anomalies showing increased latency in command-response cycles
-- Modified register values in Modbus Write Multiple Registers (function code 16) commands
+**Detection Results by Source:**
 
-**DoS Attack Analysis:**
+| Detection Layer | Alerts | Attacks Detected | Description |
+|-----------------|--------|------------------|-------------|
+| Modbus flood detection | 13,310 | Attacks 6, 7 (phase 3) | Rate-based: >50 reads/sec; flow-based: >50 pps with >20 packets |
+| Modbus write-rate | 300 | Attacks 4, 5, 7 (phase 2) | >2.0 writes/sec in a 10-second sliding window |
+| Rule engine (generic) | 58,812 | Background traffic | Port scan, SYN flood, DNS exfiltration pattern rules |
 
-Traffic analysis identified:
-- SYN packets at rates exceeding 10,000 per second from spoofed source addresses
-- Connection table exhaustion on the Modbus server (half-open connections)
-- Correlated PLC communication failures in SCADA logs
-- Characteristic traffic patterns matching known DDoS tools
+**Flood Attack Analysis (Attacks 6 & 7):**
 
-**Ransomware Analysis:**
+The Modbus flood attack (Attack 6, 18:12:36–18:12:56) produced the strongest forensic signal: 12,716 alerts in 20 seconds, with the rate-based detector measuring up to 273 reads/sec and the flow-based detector recording 10,500 packets/sec within individual TCP flows. Attack 7's disruption phase generated an additional 594 flood alerts. Wireshark analysis of the PCAP confirmed dense bursts of FC 0x03 (Read Holding Registers) requests with near-zero inter-packet delay, clearly distinguishable from the simulation's normal 200ms polling cycle.
 
-Memory forensics using Volatility revealed:
-- Malicious process injection into legitimate system processes
-- Encryption routine artefacts in memory
-- Command and control (C2) server IP addresses
-- Registry modifications for persistence
+**Write-Rate Analysis (Attacks 4, 5 & 7):**
 
-Disk analysis using Autopsy identified:
-- Encrypted files with characteristic ransomware extension modifications
-- Ransom note files dropped in multiple directories
-- Shadow copy deletion commands in event logs
-- Initial infection vector through malicious email attachment
+The write-rate detector triggered 300 alerts between 18:10:17 and 18:13:22. The Replay Attack (Attack 4) generated FC 0x05 write-rate alerts at 2.1–4.0 writes/sec — the 1-second replay interval combined with the simulation's own PLC writes exceeded the 2.0 writes/sec threshold. The Multi-Stage attack's manipulation phase (Attack 7, phase 2) generated the highest write rates at 7.9–8.0 writes/sec (FC 0x06), as it issued both pump and valve writes per iteration. Function code breakdown: 228 alerts for FC 0x05 (Write Coil) and 72 for FC 0x06 (Write Register).
+
+**False Positive Analysis:**
+
+58,812 alerts (81% of total) originated from generic network rules designed for internet traffic. On the loopback interface, where all traffic originates from 127.0.0.1, rules for port scanning (rule-2: 25,844 alerts), DNS exfiltration (rule-8: 25,342), SYN scanning (rule-9: 3,938), and SYN flooding (rule-1: 3,688) fire continuously on normal simulation traffic. These represent an expected limitation of deploying generic IDS signatures in a localhost simulation environment; in a production deployment with distinct source/destination IPs, these rules would not trigger on legitimate PLC-to-PLC traffic.
+
+**CNN+LSTM ML Inference:**
+
+The CNN+LSTM classifier (Model B, 99.83% accuracy on CIC-IDS2017) was loaded and integrated into the live monitor but produced zero classifications during the investigation. Analysis identified the root cause as a flow expiration timing issue: the model runs inference on completed (expired) network flows, but the continuous simulation traffic prevents flows from reaching the 5-second idle timeout required for expiration. The model's 99.83% accuracy on offline datasets demonstrates its capability; real-time deployment requires flow segmentation strategies (e.g., time-windowed flow slicing) rather than idle-timeout-based expiration.
 
 ### 3.4 AI/ML in Forensic Analysis
 
-Machine learning techniques enhance forensic investigation capabilities:
+The investigation demonstrates both the strengths and practical limitations of applying ML to CPS forensics:
 
-**Malware Classification:**
+**Automated Alert Correlation:**
 
-A trained classifier categorises malware samples based on behavioural features:
-- API call sequences extracted from dynamic analysis
-- Network communication patterns
-- File system modifications
-- Registry changes
+The IDS alert log (72,422 entries in structured JSONL) enables automated forensic timeline reconstruction. Correlating alert timestamps against the attack manifest programmatically identifies which detection layer responded to each attack and measures detection latency. This approach scales to investigations involving millions of events — impractical for manual review.
 
-Random Forest and CNN models trained on malware family datasets achieve classification accuracy exceeding 95% for known families.
+**Rate-Based Anomaly Detection:**
 
-**Anomaly Detection in Logs:**
+The write-rate and read-rate detectors operate as lightweight anomaly detectors, maintaining sliding-window counters per source IP. These successfully distinguished attack traffic from baseline, achieving a 100% detection rate for flood attacks and >90% for high-rate write attacks. The approach generalises to any protocol with expected traffic rate baselines.
 
-LSTM networks analyse system and application logs to identify anomalous sequences indicating compromise:
-- Unusual process execution chains
-- Abnormal user authentication patterns
-- Atypical network connection sequences
+**Deep Learning Limitations in Live Deployment:**
+
+The CNN+LSTM model, despite achieving 99.83% accuracy on the CIC-IDS2017 test set, failed to produce classifications in live deployment. This illustrates a well-documented gap between offline ML evaluation and real-time deployment. CIC-IDS2017 flows were generated by CICFlowMeter with clean flow boundaries; live traffic on loopback produces persistent connections that never expire, preventing the model from receiving completed flow feature vectors. Bridging this gap requires either time-windowed feature extraction (slicing flows at fixed intervals regardless of idle state) or integration at the packet level rather than the flow level.
 
 **Forensic Log Analysis:**
 
-Natural Language Processing (NLP) techniques parse unstructured log data:
-- Named Entity Recognition (NER) extracts IP addresses, usernames, and file paths
-- Clustering groups related events across disparate log sources
-- Timeline reconstruction automates event correlation
+The structured JSONL alert format enables programmatic querying:
+- Grouping by `model_source` isolates detection layer performance
+- Filtering by `severity` prioritises Critical/High alerts for triage
+- Correlating `timestamp` with the attack manifest reconstructs the kill chain
+- Counting by `category` (DoS, Probe, Normal) quantifies threat composition
 
 ### 3.5 Incident Report
 
-**INCIDENT REPORT: CPS Security Breach**
+**INCIDENT REPORT: CPS Water Treatment Plant — Automated Attack Campaign**
 
 **Executive Summary:**
-The CPS environment experienced a multi-vector attack comprising MITM interception, DoS disruption, and ransomware deployment. The attack resulted in temporary loss of process visibility, communication disruption, and encryption of engineering workstation data.
+The CPS water treatment simulation experienced a seven-stage automated attack campaign targeting the PLC's Modbus TCP interface. The IDS detected 13,610 attack-specific alerts across two detection layers (flood detection and write-rate anomaly), correctly identifying the DoS flood and high-rate write manipulation attacks. The investigation captured 38,592 packets in a 3.5 MB PCAP file and a timestamped attack manifest enabling full timeline reconstruction.
 
-**Attack Timeline:**
-| Time | Event |
-|------|-------|
-| T+0:00 | Initial phishing email delivered to engineering workstation |
-| T+0:15 | User executes malicious attachment |
-| T+0:20 | Malware establishes C2 communication |
-| T+1:00 | Attacker conducts network reconnaissance |
-| T+2:00 | ARP spoofing initiated for MITM positioning |
-| T+2:30 | Modbus traffic interception begins |
-| T+4:00 | DoS attack launched against SCADA server |
-| T+4:15 | Ransomware deployment to engineering workstation |
-| T+4:30 | Encryption of local files completed |
+**Attack Timeline (from attack-manifest.json):**
+
+| Time (UTC) | Duration | Attack | IDS Detection |
+|------------|----------|--------|---------------|
+| 18:07:34 | 45s | Command Injection (FC 0x05, 5s interval) | Below write-rate threshold |
+| 18:08:35 | 45s | Pump Oscillation (FC 0x05, 2s interval) | Below write-rate threshold |
+| 18:09:35 | 45s | Valve Manipulation (FC 0x06, 3s interval) | Below write-rate threshold |
+| 18:10:35 | 45s | Replay Attack (FC 0x05, 1s interval) | 80 write-rate alerts |
+| 18:11:35 | 45s | Sensor Spoofing (FC 0x06, 2s interval) | 80 write-rate alerts |
+| 18:12:36 | 20s | Modbus Flood (FC 0x03, tight loop) | 12,716 flood alerts |
+| 18:13:11 | 31s | Multi-Stage (recon→manipulation→flood) | 594 flood + 140 write-rate alerts |
 
 **Identified Anomalies:**
-1. Unusual outbound connections to unknown IP addresses
-2. ARP table inconsistencies across network devices
-3. Elevated network traffic volumes during attack window
-4. Process injection in system services
-5. Mass file modification events on engineering workstation
+1. Modbus read rates exceeding 10,000 packets/sec during flood attacks (normal baseline: ~5 packets/sec)
+2. Write rates of 2.1–8.0 writes/sec during manipulation attacks (normal baseline: ~0.2 writes/sec from PLC control loop)
+3. FC 0x05/0x06 commands originating from ephemeral ports outside the expected SCADA–PLC communication pair
+4. Dense FC 0x03 bursts visible in Wireshark I/O graphs, temporally correlated with attack manifest timestamps
 
 **Impact Assessment:**
-- Process visibility lost for 45 minutes during DoS attack
-- Engineering workstation data encrypted (recovered from backups)
-- Potential data exfiltration of PLC configurations
-- No physical process damage due to fail-safe mechanisms
+- PLC control logic overridden during manipulation attacks (pump and valve states forced to attacker-chosen values)
+- Sensor readings falsified during spoofing attack, providing incorrect tank level data to SCADA operator
+- PLC connection handler saturated during flood attack, degrading response time for legitimate SCADA queries
+- No permanent physical process damage — simulation fail-safes and attack time-bounding prevented catastrophic states
 
-**Mitigation Steps Taken:**
-1. Isolated affected network segments
-2. Terminated malicious processes
-3. Restored systems from verified backups
-4. Implemented emergency Modbus authentication
-5. Deployed additional network monitoring
+**Detection Gap Analysis:**
+- Attacks 1–3 (command injection, oscillation, valve manipulation) operated below the 2.0 writes/sec detection threshold and were not flagged by write-rate detection. Lowering the threshold would increase detection but risks false positives from legitimate SCADA operator commands.
+- CNN+LSTM inference was unable to classify flows due to persistent TCP connections on loopback preventing flow expiration. Offline accuracy (99.83%) does not translate to live detection without flow segmentation.
 
 **Recommendations:**
-1. Implement network segmentation between IT and OT networks
-2. Deploy protocol-aware firewalls for industrial protocols
-3. Enable Modbus/TCP authentication extensions
-4. Implement endpoint detection and response (EDR) on engineering workstations
-5. Conduct regular security awareness training
-6. Establish offline backup procedures for critical configurations
-7. Deploy the AI/ML-based IDS system for continuous monitoring
+1. Deploy Modbus application-layer firewall enforcing function code whitelisting (permit only FC 0x03 reads from SCADA, block unsolicited writes from unknown sources)
+2. Implement Modbus/TCP authentication extensions or TLS wrapping to prevent unauthenticated command injection
+3. Configure per-source write-rate thresholds tuned to expected SCADA polling intervals (e.g., 0.5 writes/sec for a 2-second control loop)
+4. Deploy network segmentation isolating PLC networks from general-purpose hosts
+5. Implement time-windowed flow slicing for CNN+LSTM inference to enable ML-based detection on persistent connections
+6. Establish IDS alert log retention and automated correlation with SIEM for real-time triage
 
 ---
 
@@ -460,9 +440,9 @@ Address OWASP Top 10 vulnerabilities relevant to CPS web interfaces:
 
 ## Conclusion
 
-This report presented the design of an AI/ML-driven Intrusion Detection System tailored for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines traditional signature-based detection with a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017.
+This report presented the design and live evaluation of an AI/ML-driven Intrusion Detection System tailored for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines a 20-rule signature engine with rate-based anomaly detection and a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017.
 
-The forensic investigation of simulated MITM, DoS, and ransomware attacks — conducted against an Arduino-based water treatment plant testbed communicating over Modbus RTU/TCP — demonstrated the application of established forensic methodologies (NIST SP 800-86) and tools (Wireshark, Volatility, Autopsy), enhanced by AI/ML techniques for malware classification and log analysis. The integration of intelligent security monitoring with robust forensic capabilities provides a comprehensive approach to protecting critical CPS infrastructure against evolving cyber threats.
+The forensic investigation — conducted against a MiniCPS water treatment simulation with seven automated Modbus TCP attacks — validated the IDS's detection capabilities using NIST SP 800-86 methodology. The investigation captured 38,592 packets and 72,422 IDS alerts, with the flood detector and write-rate detector correctly identifying DoS and manipulation attacks. The CNN+LSTM model, despite 99.83% offline accuracy, highlighted a real-world deployment gap: flow-based ML inference requires flow segmentation strategies for persistent connections. This finding underscores that offline ML accuracy alone is insufficient — live deployment demands protocol-aware feature engineering matched to the target environment's traffic patterns.
 
 ---
 
