@@ -28,6 +28,15 @@ echo
 # ----------------------------------------------------------
 errors=0
 
+# When run via sudo, check Python packages as the real user
+if [[ -n "${SUDO_USER:-}" ]]; then
+    REAL_USER="$SUDO_USER"
+    PY_CHECK="sudo -u $REAL_USER python3"
+else
+    REAL_USER="$(whoami)"
+    PY_CHECK="python3"
+fi
+
 if [[ ! -f "$REPO/ids/target/release/monitor" ]]; then
     echo "ERROR: Monitor binary not found."
     echo "  Fix: cd ids && cargo build --release -p ids-engine --bin monitor"
@@ -45,8 +54,8 @@ if [[ ! -f "$REPO/ids/pytorch-train/data/models/model-b/scaler.json" ]]; then
     errors=1
 fi
 
-python3 -c "import pymodbus" 2>/dev/null || { echo "ERROR: pip install pymodbus"; errors=1; }
-python3 -c "import onnxruntime" 2>/dev/null || { echo "ERROR: pip install onnxruntime"; errors=1; }
+$PY_CHECK -c "import pymodbus" 2>/dev/null || { echo "ERROR: pip install pymodbus"; errors=1; }
+$PY_CHECK -c "import onnxruntime" 2>/dev/null || { echo "ERROR: pip install onnxruntime"; errors=1; }
 command -v tmux  >/dev/null || { echo "ERROR: install tmux";   errors=1; }
 command -v tcpdump >/dev/null || { echo "ERROR: install tcpdump"; errors=1; }
 
@@ -56,7 +65,7 @@ if [[ $errors -ne 0 ]]; then
     exit 1
 fi
 
-echo "[+] All prerequisites OK"
+echo "[+] All prerequisites OK (user: $REAL_USER)"
 
 # ----------------------------------------------------------
 #  Evidence directories (timestamped per run)
@@ -73,18 +82,15 @@ echo "[+] Evidence dir: $RUN_DIR"
 echo "[+] Symlink:      $EVIDENCE/latest -> run-$RUN_TS"
 
 # ----------------------------------------------------------
-#  Sudo credentials
+#  Sudo check
 # ----------------------------------------------------------
-echo
-echo "sudo is required for tcpdump and the IDS monitor."
-sudo -v
-
-# Keep sudo alive in background until this script exits
-( while true; do sudo -n -v 2>/dev/null; sleep 50; done ) &
-SUDO_PID=$!
-trap 'kill $SUDO_PID 2>/dev/null' EXIT
-
-echo "[+] sudo cached"
+if [[ $EUID -ne 0 ]]; then
+    echo
+    echo "This script needs root for tcpdump and the IDS monitor."
+    echo "Re-run with: sudo ./investigation/run.sh"
+    exit 1
+fi
+echo "[+] Running as root"
 
 # ----------------------------------------------------------
 #  tmux session — 2x2 grid
@@ -115,11 +121,11 @@ tmux send-keys -t "$TGT.1" \
 
 # Bottom-left — tcpdump
 tmux send-keys -t "$TGT.4" \
-  "sudo tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
+  "tcpdump -i lo tcp port 5502 -w '$RUN_DIR/pcaps/full-session.pcap' -U" Enter
 
 # Top-right — IDS Monitor
 tmux send-keys -t "$TGT.2" \
-  "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
+  "cd '$REPO/ids' && ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$RUN_DIR/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
 # Bottom-right — Attack runner
 tmux send-keys -t "$TGT.3" \
