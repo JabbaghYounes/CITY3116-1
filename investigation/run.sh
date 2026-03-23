@@ -95,6 +95,9 @@ echo "[+] Running as root"
 # ----------------------------------------------------------
 #  tmux session — 2x2 grid
 # ----------------------------------------------------------
+# Ghostty (and other modern terminals) set TERM values tmux doesn't recognise
+export TERM="${TERM/ghostty/256color}"
+[[ "$TERM" == *256color* || "$TERM" == screen* || "$TERM" == tmux* ]] || export TERM=xterm-256color
 tmux kill-session -t "$SESSION" 2>/dev/null || true
 
 tmux new-session  -d -s "$SESSION"              # pane 1 (full window)
