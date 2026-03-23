@@ -110,6 +110,26 @@ sudo python3 run.py
 python3 run.py --no-mininet
 ```
 
+### Forensic Investigation (Automated)
+
+Runs all 7 attacks against the simulation while capturing evidence (pcaps, IDS alerts, timestamps) in a 4-pane tmux session:
+
+```bash
+./investigation/run.sh
+```
+
+This starts the dashboard, IDS monitor (with CNN+LSTM), tcpdump, and an attack runner that auto-sequences all attacks with gaps for flow expiration. Evidence is saved to `evidence/`:
+
+| Artifact | Location |
+|----------|----------|
+| Packet capture | `evidence/pcaps/full-session.pcap` |
+| IDS alert log | `evidence/logs/alerts.jsonl` |
+| Attack timestamps | `evidence/logs/attack-manifest.json` |
+
+After the run, open the pcap in Wireshark for analysis: `wireshark evidence/pcaps/full-session.pcap`
+
+See `plant/ATTACK-EVIDENCE-GUIDE.md` for the full manual walkthrough and expected IDS alerts per attack.
+
 ### Attack Tools
 
 ```bash
