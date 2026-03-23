@@ -10,6 +10,8 @@
 //!     --scaler ../pytorch-train/data/models/model-b/scaler.json
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -93,6 +95,33 @@ impl WriteTracker {
 
         // Count writes from this source in the window
         let count = self.writes.iter().filter(|(ip, _)| *ip == src).count();
+        let secs = self.window.num_seconds().max(1) as f64;
+        count as f64 / secs
+    }
+}
+
+/// Tracks Modbus read frequency per source IP for flood detection.
+struct ReadTracker {
+    reads: Vec<(std::net::IpAddr, chrono::DateTime<Utc>)>,
+    window: chrono::Duration,
+}
+
+impl ReadTracker {
+    fn new(window_secs: i64) -> Self {
+        Self {
+            reads: Vec::new(),
+            window: chrono::Duration::seconds(window_secs),
+        }
+    }
+
+    fn record_read(&mut self, src: std::net::IpAddr) -> f64 {
+        let now = Utc::now();
+        self.reads.push((src, now));
+
+        let cutoff = now - self.window;
+        self.reads.retain(|(_, t)| *t > cutoff);
+
+        let count = self.reads.iter().filter(|(ip, _)| *ip == src).count();
         let secs = self.window.num_seconds().max(1) as f64;
         count as f64 / secs
     }
@@ -280,10 +309,20 @@ async fn main() -> Result<()> {
     let mut flow_table = FlowTable::new();
     let flow_timeout = Duration::from_secs(cli.flow_timeout);
 
-    // Write rate tracking
+    // Write/read rate tracking
     let mut write_tracker = WriteTracker::new(10);
+    let mut read_tracker = ReadTracker::new(5);
     let write_threshold = cli.write_freq_threshold;
+    let read_flood_threshold = 50.0; // reads per second
     let ml_threshold = cli.ml_threshold;
+
+    // Graceful shutdown on Ctrl+C / SIGINT
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        r.store(false, Ordering::SeqCst);
+    });
 
     // Stats
     let mut total_packets: u64 = 0;
@@ -316,7 +355,14 @@ async fn main() -> Result<()> {
     println!();
 
     // Main event loop
-    while let Some(event) = rx.recv().await {
+    while running.load(Ordering::SeqCst) {
+        let event = tokio::select! {
+            e = rx.recv() => match e {
+                Some(ev) => ev,
+                None => break,
+            },
+            _ = tokio::time::sleep(Duration::from_millis(100)) => continue,
+        };
         let packet = match event {
             SecurityEvent::Network(p) => p,
             _ => continue,
@@ -398,10 +444,37 @@ async fn main() -> Result<()> {
 
                 // Detect reads at unusually high rates (flood)
                 if matches!(fc, 0x01 | 0x02 | 0x03 | 0x04) {
-                    // Check if this flow has high packet count (potential flood)
+                    // Rate-based detection (independent of flow state)
+                    let read_rate = read_tracker.record_read(packet.src_ip);
+                    if read_rate > read_flood_threshold {
+                        let alert = modbus_event_alert(
+                            &packet,
+                            format!("Modbus read flood: {:.0} reads/sec from {}",
+                                read_rate, packet.src_ip),
+                            Severity::High,
+                            AttackCategory::DoS,
+                        );
+                        print_alert(&alert);
+                        logger.log_alert(&alert).await?;
+                        alerts_generated += 1;
+                    }
+
+                    // Flow-based detection (full 5-tuple matching)
+                    let read_flow_key = ids_common::types::FlowKey {
+                        src_ip: packet.src_ip,
+                        dst_ip: packet.dst_ip,
+                        src_port: packet.src_port,
+                        dst_port: packet.dst_port,
+                        protocol: packet.protocol,
+                    };
                     if let Some(flow) = flow_table.get_active_flows()
                         .into_iter()
-                        .find(|f| f.key.src_ip == packet.src_ip && f.key.dst_ip == packet.dst_ip)
+                        .find(|f| f.key == read_flow_key || (
+                            f.key.src_ip == packet.dst_ip
+                            && f.key.dst_ip == packet.src_ip
+                            && f.key.src_port == packet.dst_port
+                            && f.key.dst_port == packet.src_port
+                        ))
                     {
                         let duration_secs = (flow.last_time - flow.start_time)
                             .num_milliseconds().max(1) as f64 / 1000.0;
@@ -409,7 +482,7 @@ async fn main() -> Result<()> {
                         if pps > 50.0 && flow.packet_count > 20 {
                             let alert = modbus_event_alert(
                                 &packet,
-                                format!("Modbus read flood: {:.0} packets/sec ({} total packets)",
+                                format!("Modbus read flood: {:.0} packets/sec ({} total in flow)",
                                     pps, flow.packet_count),
                                 Severity::High,
                                 AttackCategory::DoS,
@@ -425,16 +498,28 @@ async fn main() -> Result<()> {
 
         // Periodic flow expiry + ML inference on completed flows
         let now = Utc::now();
-        if (now - last_expire).num_seconds() > 10 {
+        if (now - last_expire).num_seconds() > 5 {
             let expired = flow_table.expire(flow_timeout);
             if !expired.is_empty() {
-                info!(expired = expired.len(), "Expired idle flows");
+                println!(
+                    "[EXPIRE] {} flows expired, checking for ML inference...",
+                    expired.len()
+                );
+                for flow in &expired {
+                    println!(
+                        "  flow {}:{} -> {}:{} packets={} bytes={}",
+                        flow.key.src_ip, flow.key.src_port,
+                        flow.key.dst_ip, flow.key.dst_port,
+                        flow.packet_count, flow.byte_count
+                    );
+                }
 
                 // Run ML inference on expired flows
                 if let Some(ref mut clf) = classifier {
                     for flow in &expired {
                         // Skip flows with too few packets (not enough data)
                         if flow.packet_count < 3 {
+                            println!("  -> skipped (only {} packets)", flow.packet_count);
                             continue;
                         }
 
@@ -443,6 +528,11 @@ async fn main() -> Result<()> {
 
                         match clf.predict(&features) {
                             Ok(pred) => {
+                                println!(
+                                    "  -> ML: {:?} confidence={:.1}%",
+                                    pred.category,
+                                    pred.confidence * 100.0
+                                );
                                 if pred.category != AttackCategory::Normal
                                     && pred.confidence >= ml_threshold
                                 {
@@ -454,10 +544,13 @@ async fn main() -> Result<()> {
                                 }
                             }
                             Err(e) => {
+                                println!("  -> ML ERROR: {}", e);
                                 warn!(error = %e, "ML inference failed for flow");
                             }
                         }
                     }
+                } else {
+                    println!("  -> classifier not loaded, skipping ML");
                 }
             }
             last_expire = now;
@@ -480,6 +573,43 @@ async fn main() -> Result<()> {
             last_stats = now;
         }
     }
+
+    // Graceful shutdown: expire all remaining flows and run final ML inference
+    println!("\n[SHUTDOWN] Expiring all remaining flows for final ML inference...");
+    let remaining = flow_table.expire(Duration::from_secs(0));
+    if !remaining.is_empty() {
+        info!(flows = remaining.len(), "Final flow expiry");
+        if let Some(ref mut clf) = classifier {
+            for flow in &remaining {
+                if flow.packet_count < 3 {
+                    continue;
+                }
+                let features = extract_cicids_features(flow);
+                ml_inferences += 1;
+                match clf.predict(&features) {
+                    Ok(pred) => {
+                        if pred.category != AttackCategory::Normal
+                            && pred.confidence >= ml_threshold
+                        {
+                            ml_detections += 1;
+                            let alert = ml_prediction_to_alert(&pred, flow);
+                            print_alert(&alert);
+                            logger.log_alert(&alert).await?;
+                            alerts_generated += 1;
+                        }
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "ML inference failed for flow");
+                    }
+                }
+            }
+        }
+    }
+
+    println!(
+        "\n[FINAL] packets={} modbus={} alerts={} ml_inferences={} ml_detections={}",
+        total_packets, modbus_packets, alerts_generated, ml_inferences, ml_detections
+    );
 
     Ok(())
 }

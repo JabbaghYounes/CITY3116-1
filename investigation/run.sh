@@ -112,7 +112,7 @@ tmux send-keys -t "$TGT.4" \
 
 # Top-right — IDS Monitor
 tmux send-keys -t "$TGT.2" \
-  "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$EVIDENCE/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 15" Enter
+  "cd '$REPO/ids' && sudo ./target/release/monitor --interface lo --modbus-port 5502 --log-file '$EVIDENCE/logs/alerts.jsonl' --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx --scaler pytorch-train/data/models/model-b/scaler.json --ml-threshold 0.5 --flow-timeout 5" Enter
 
 # Bottom-right — Attack runner
 tmux send-keys -t "$TGT.3" \
