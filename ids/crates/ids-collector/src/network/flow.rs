@@ -80,6 +80,14 @@ impl FlowTable {
                 packet_sizes: Vec::new(),
                 inter_arrival_times_us: Vec::new(),
                 tcp_flags_seen: Vec::new(),
+                fwd_byte_count: 0,
+                bwd_byte_count: 0,
+                fwd_packet_sizes: Vec::new(),
+                bwd_packet_sizes: Vec::new(),
+                fwd_iats_us: Vec::new(),
+                bwd_iats_us: Vec::new(),
+                fwd_last_time: None,
+                bwd_last_time: None,
             }
         });
 
@@ -94,8 +102,22 @@ impl FlowTable {
 
         if is_forward {
             flow.fwd_packet_count += 1;
+            flow.fwd_byte_count += pkt_size as u64;
+            flow.fwd_packet_sizes.push(pkt_size);
+            if let Some(prev) = flow.fwd_last_time {
+                let fwd_iat = (now - prev).num_microseconds().unwrap_or(0);
+                flow.fwd_iats_us.push(fwd_iat);
+            }
+            flow.fwd_last_time = Some(now);
         } else {
             flow.bwd_packet_count += 1;
+            flow.bwd_byte_count += pkt_size as u64;
+            flow.bwd_packet_sizes.push(pkt_size);
+            if let Some(prev) = flow.bwd_last_time {
+                let bwd_iat = (now - prev).num_microseconds().unwrap_or(0);
+                flow.bwd_iats_us.push(bwd_iat);
+            }
+            flow.bwd_last_time = Some(now);
         }
 
         if let Some(flags) = &packet.tcp_flags {

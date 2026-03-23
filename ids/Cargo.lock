@@ -731,16 +731,21 @@ name = "ids-engine"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
+ "ids-collector",
  "ids-common",
  "ids-preprocess",
+ "ids-response",
  "ndarray",
  "rand",
  "serde",
  "serde_json",
  "smartcore",
+ "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

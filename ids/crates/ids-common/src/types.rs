@@ -74,6 +74,15 @@ pub struct FlowRecord {
     pub packet_sizes: Vec<usize>,
     pub inter_arrival_times_us: Vec<i64>,
     pub tcp_flags_seen: Vec<TcpFlags>,
+    // Per-direction tracking for CIC-IDS2017 feature extraction
+    pub fwd_byte_count: u64,
+    pub bwd_byte_count: u64,
+    pub fwd_packet_sizes: Vec<usize>,
+    pub bwd_packet_sizes: Vec<usize>,
+    pub fwd_iats_us: Vec<i64>,
+    pub bwd_iats_us: Vec<i64>,
+    pub fwd_last_time: Option<DateTime<Utc>>,
+    pub bwd_last_time: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

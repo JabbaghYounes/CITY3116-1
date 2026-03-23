@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 ids-common = { path = "../ids-common" }
 ids-preprocess = { path = "../ids-preprocess" }
+ids-collector = { path = "../ids-collector" }
+ids-response = { path = "../ids-response" }
 smartcore = "0.3"
 ndarray = { workspace = true }
 serde = { workspace = true }
@@ -15,7 +17,14 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 clap = { version = "4", features = ["derive"] }
 tracing-subscriber = { workspace = true }
+tokio = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
 
 [[bin]]
 name = "train_models"
 path = "src/bin/train_models.rs"
+
+[[bin]]
+name = "monitor"
+path = "src/bin/monitor.rs"

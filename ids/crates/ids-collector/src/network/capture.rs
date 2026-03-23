@@ -17,8 +17,8 @@ use ids_common::types::{PacketRecord, Protocol, SecurityEvent, TcpFlags};
 
 use super::protocols::modbus::parse_modbus;
 
-/// MODBUS/TCP well-known port.
-const MODBUS_PORT: u16 = 502;
+/// Default MODBUS/TCP well-known port.
+const DEFAULT_MODBUS_PORT: u16 = 502;
 
 /// Network packet capture engine.
 ///
@@ -27,6 +27,7 @@ const MODBUS_PORT: u16 = 502;
 /// for downstream processing.
 pub struct NetworkCapture {
     interface_name: String,
+    modbus_ports: Vec<u16>,
 }
 
 impl NetworkCapture {
@@ -34,6 +35,15 @@ impl NetworkCapture {
     pub fn new(interface: &str) -> Self {
         Self {
             interface_name: interface.to_string(),
+            modbus_ports: vec![DEFAULT_MODBUS_PORT],
+        }
+    }
+
+    /// Create a new `NetworkCapture` with custom Modbus port(s).
+    pub fn with_ports(interface: &str, modbus_ports: Vec<u16>) -> Self {
+        Self {
+            interface_name: interface.to_string(),
+            modbus_ports,
         }
     }
 
@@ -44,6 +54,12 @@ impl NetworkCapture {
     /// `tokio::task::spawn_blocking`.
     pub fn start(interface: &str, tx: mpsc::Sender<SecurityEvent>) -> Result<()> {
         let capture = Self::new(interface);
+        capture.run(tx)
+    }
+
+    /// Like `start` but with custom Modbus port detection.
+    pub fn start_with_ports(interface: &str, modbus_ports: Vec<u16>, tx: mpsc::Sender<SecurityEvent>) -> Result<()> {
+        let capture = Self::with_ports(interface, modbus_ports);
         capture.run(tx)
     }
 
@@ -89,7 +105,7 @@ impl NetworkCapture {
         loop {
             match rx_chan.next() {
                 Ok(frame) => {
-                    if let Some(record) = Self::parse_frame(frame) {
+                    if let Some(record) = self.parse_frame_with_ports(frame) {
                         trace!(
                             src = %record.src_ip,
                             dst = %record.dst_ip,
@@ -117,10 +133,20 @@ impl NetworkCapture {
 
     /// Parse a raw Ethernet frame into a `PacketRecord`.
     pub fn parse_frame(frame: &[u8]) -> Option<PacketRecord> {
+        Self::parse_frame_for_ports(frame, &[DEFAULT_MODBUS_PORT])
+    }
+
+    /// Parse a frame using the instance's configured Modbus ports.
+    fn parse_frame_with_ports(&self, frame: &[u8]) -> Option<PacketRecord> {
+        Self::parse_frame_for_ports(frame, &self.modbus_ports)
+    }
+
+    /// Parse a raw Ethernet frame, detecting Modbus on the given ports.
+    fn parse_frame_for_ports(frame: &[u8], modbus_ports: &[u16]) -> Option<PacketRecord> {
         let ethernet = EthernetPacket::new(frame)?;
         match ethernet.get_ethertype() {
-            EtherTypes::Ipv4 => Self::parse_ipv4(ethernet.payload()),
-            EtherTypes::Ipv6 => Self::parse_ipv6(ethernet.payload()),
+            EtherTypes::Ipv4 => Self::parse_ipv4_ports(ethernet.payload(), modbus_ports),
+            EtherTypes::Ipv6 => Self::parse_ipv6_ports(ethernet.payload(), modbus_ports),
             other => {
                 trace!(ethertype = ?other, "Skipping non-IP ethertype");
                 None
@@ -129,33 +155,54 @@ impl NetworkCapture {
     }
 
     /// Parse an IPv4 packet and its transport-layer header.
+    #[allow(dead_code)]
     fn parse_ipv4(ip_payload: &[u8]) -> Option<PacketRecord> {
+        Self::parse_ipv4_ports(ip_payload, &[DEFAULT_MODBUS_PORT])
+    }
+
+    fn parse_ipv4_ports(ip_payload: &[u8], modbus_ports: &[u16]) -> Option<PacketRecord> {
         let ipv4 = Ipv4Packet::new(ip_payload)?;
         let src_ip = IpAddr::V4(ipv4.get_source());
         let dst_ip = IpAddr::V4(ipv4.get_destination());
         let next_proto = ipv4.get_next_level_protocol();
         let transport_payload = ipv4.payload();
 
-        Self::parse_transport(src_ip, dst_ip, next_proto, transport_payload)
+        Self::parse_transport_ports(src_ip, dst_ip, next_proto, transport_payload, modbus_ports)
     }
 
     /// Parse an IPv6 packet and its transport-layer header.
+    #[allow(dead_code)]
     fn parse_ipv6(ip_payload: &[u8]) -> Option<PacketRecord> {
+        Self::parse_ipv6_ports(ip_payload, &[DEFAULT_MODBUS_PORT])
+    }
+
+    fn parse_ipv6_ports(ip_payload: &[u8], modbus_ports: &[u16]) -> Option<PacketRecord> {
         let ipv6 = Ipv6Packet::new(ip_payload)?;
         let src_ip = IpAddr::V6(ipv6.get_source());
         let dst_ip = IpAddr::V6(ipv6.get_destination());
         let next_proto = ipv6.get_next_header();
         let transport_payload = ipv6.payload();
 
-        Self::parse_transport(src_ip, dst_ip, next_proto, transport_payload)
+        Self::parse_transport_ports(src_ip, dst_ip, next_proto, transport_payload, modbus_ports)
     }
 
     /// Parse transport layer (TCP/UDP/ICMP) and build a `PacketRecord`.
+    #[allow(dead_code)]
     fn parse_transport(
         src_ip: IpAddr,
         dst_ip: IpAddr,
         next_proto: pnet::packet::ip::IpNextHeaderProtocol,
         transport_payload: &[u8],
+    ) -> Option<PacketRecord> {
+        Self::parse_transport_ports(src_ip, dst_ip, next_proto, transport_payload, &[DEFAULT_MODBUS_PORT])
+    }
+
+    fn parse_transport_ports(
+        src_ip: IpAddr,
+        dst_ip: IpAddr,
+        next_proto: pnet::packet::ip::IpNextHeaderProtocol,
+        transport_payload: &[u8],
+        modbus_ports: &[u16],
     ) -> Option<PacketRecord> {
         match next_proto {
             IpNextHeaderProtocols::Tcp => {
@@ -172,8 +219,9 @@ impl NetworkCapture {
                     urg: (tcp.get_flags() & pnet::packet::tcp::TcpFlags::URG) != 0,
                 };
 
-                // Detect Modbus/TCP by well-known port
-                let protocol = if dst_port == MODBUS_PORT || src_port == MODBUS_PORT {
+                // Detect Modbus/TCP by configured ports
+                let is_modbus_port = modbus_ports.iter().any(|p| dst_port == *p || src_port == *p);
+                let protocol = if is_modbus_port {
                     if let Some(_modbus_info) = parse_modbus(&payload) {
                         Protocol::Modbus
                     } else {

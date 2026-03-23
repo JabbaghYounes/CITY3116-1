@@ -17,7 +17,7 @@ A complete IDS/IPS prototype targeting industrial control systems, consisting of
 
 Detection uses three complementary models:
 - **Random Forest** (smartcore) — supervised, handles known attack patterns
-- **CNN+LSTM** (PyTorch) — deep learning, Conv1d→LSTM→FC, ~297K params
+- **CNN+LSTM** (PyTorch/ONNX) — deep learning, Conv1d→LSTM→FC, ~297K params — **integrated into the live monitor** via ONNX Runtime inference on completed flows
 - **Isolation Forest** — unsupervised anomaly detection for zero-days
 
 ### Training Results
@@ -62,7 +62,42 @@ cd ids/parallel-train && ./setup.sh
 cd ids && cargo test --workspace
 ```
 
-### Plant Simulation
+### Plant Dashboard (Recommended)
+
+```bash
+cd plant/dashboard
+python3 app.py
+# Open http://localhost:8888
+# Click "Start Simulation" — runs the full plant on localhost
+# Use SCADA controls to interact, launch attacks from the terminal panel
+```
+
+### Live IDS Monitor
+
+```bash
+# Build the monitor
+cd ids && cargo build --release -p ids-engine --bin monitor
+
+# Run against the simulation — rule engine only
+sudo ./target/release/monitor --interface lo --modbus-port 5502
+
+# Run with CNN+LSTM ML inference (requires onnxruntime: pip install onnxruntime)
+# First export the model to ONNX (one-time):
+cd ids/pytorch-train && python3 export_onnx.py
+# Then run the monitor with --model and --scaler:
+cd ids && sudo ./target/release/monitor --interface lo --modbus-port 5502 \
+  --model pytorch-train/data/models/model-b/cnn_lstm_model.onnx \
+  --scaler pytorch-train/data/models/model-b/scaler.json
+```
+
+The monitor runs a multi-layer detection pipeline:
+1. **Rule engine** (20 rules) — pattern-based detection on each packet/flow
+2. **Modbus analysis** — write rate anomalies, read flood detection
+3. **CNN+LSTM inference** (optional) — ML classification on expired flows using Model B (99.83% accuracy on CIC-IDS2017)
+
+When `--model` and `--scaler` are provided, the monitor spawns a Python inference subprocess that loads the ONNX model and classifies completed network flows into 5 categories (Normal, DoS, Probe, R2L, U2R). Flows with fewer than 3 packets are skipped. Alerts are generated for non-Normal predictions above the `--ml-threshold` (default: 50%).
+
+### Plant Simulation (CLI)
 
 ```bash
 cd plant/simulation
@@ -99,9 +134,12 @@ Download and place at repo root (gitignored):
 
 ## Hardware
 
-- Arduino Mega 2560 — PLC 1
+- Arduino Mega 2560 (ELEGOO kit) — PLC 1
 - Arduino Uno Rev3 — PLC 2
 - W5500 Ethernet module — Modbus TCP
 - MAX485 RS-485 converter — Modbus RTU fieldbus
 - TP-Link LS1005G switch — plant network
-- ELEGOO kit sensors/actuators (ultrasonic, temp, motion, sound, water level, relay, servo, buzzer, LCD, RFID)
+- DHT11 temperature/humidity sensor (digital, D4)
+- ELEGOO kit sensors/actuators (ultrasonic, motion, sound, water level, relay, servo, buzzer, LCD, RFID)
+
+Wiring diagrams available in `plant/diagrams/` (SVG, printable).
