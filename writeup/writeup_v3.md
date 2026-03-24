@@ -317,7 +317,7 @@ All attacks use the pymodbus 3.x framework and target the simulation over persis
 
 1. **tcpdump:** Command-line packet capture tool used to record all Modbus TCP traffic on the loopback interface for the duration of the investigation. Produces a PCAP file preserving full packet contents and timestamps for offline analysis.
 
-2. **Wireshark:** Network protocol analyser used for post-capture examination of the PCAP. Modbus/TCP dissector applied via "Decode As" on port 5502 to decode function codes, register addresses, and values. I/O graphs used to visualise traffic volume spikes correlating with attack periods.
+2. **Wireshark:** Network protocol analyser used for post-capture examination of the PCAP (see Appendix: Wireshark Screenshots). The Modbus/TCP dissector was applied via "Decode As" on port 5502 (Figure 02) to decode function codes, register addresses, and written values from raw TCP payloads. Analysis included display filters (`modbus.func_code == 5` for Write Coil, `modbus.func_code == 6` for Write Register, `modbus.func_code == 3` for Read Holding Registers), I/O graphs for traffic volume correlation, and conversation statistics for flow-level analysis.
 
 3. **CPS-IDS Monitor (custom):** The implemented IDS running a multi-layer detection pipeline: a 20-rule signature engine, Modbus write-rate anomaly detection, read flood rate detection, and CNN+LSTM deep learning inference on expired network flows. Outputs a structured JSONL alert log with timestamps, severity, attack category, source/destination IPs and ports, confidence scores, and detection source attribution.
 
@@ -338,6 +338,30 @@ The investigation follows NIST SP 800-86 guidelines:
 4. **Reporting:** Findings documented in a structured incident report with quantitative metrics.
 
 ### 3.3 Forensic Analysis
+
+**Wireshark PCAP Analysis:**
+
+Post-capture analysis of the 3.5 MB PCAP (38,289 packets over 464.57 seconds) in Wireshark provided packet-level forensic evidence complementing the IDS alert log:
+
+*Protocol Decoding (Figures 01–04):* Raw TCP traffic on port 5502 was decoded as Modbus/TCP using Wireshark's "Decode As" feature. This revealed the MBAP header structure (transaction ID, protocol ID, unit ID) and function code payloads that are invisible in raw TCP analysis. Modbus exception responses (Figure 04) — "Exception returned: Illegal data address" — were visible during flood attacks, confirming that the PLC's connection handler was overwhelmed and returning errors to legitimate queries.
+
+*Write Coil Analysis — FC 0x05 (Figures 05–06):* Filtering with `modbus.func_code == 5` isolated all pump control commands. The pcap shows alternating Write Coil requests with values 0xFF00 (ON) and 0x0000 (OFF) at 2-second intervals during the Pump Oscillation attack, and 1-second intervals during the Replay Attack. Each write is followed by an identical echo response from the PLC (Modbus write confirmation), creating the characteristic request-response pairs visible in the packet list. The Stuxnet rootkit's intermittent pump toggles are also visible as irregular FC 0x05 bursts separated by 20-second silent periods.
+
+*Write Register Analysis — FC 0x06 (Figures 07–08):* Filtering with `modbus.func_code == 6` isolated valve manipulation and sensor spoofing commands. During the Valve Manipulation attack, Write Register requests target register address 1 (valve position) with random values. During the Sensor Spoofing attack, writes target register address 0 (tank level) with values 0–100 — a register that should only be written by the PLC's internal control logic, never by external SCADA commands. The decoded register values in Wireshark's packet detail pane confirm the exact values logged by the CPS physics engine's sensor spoofing alerts.
+
+*Flood Attack Analysis — FC 0x03 (Figures 09–10):* The Modbus Flood attack produced dense bursts of Read Holding Registers (FC 0x03) requests with near-zero inter-packet delay. Wireshark reveals that the PLC initially responds normally but begins returning exception responses ("Illegal data address") under load, indicating connection handler saturation. The exception responses confirm that the flood degraded PLC availability — a successful Denial of Service against the physical process controller.
+
+*I/O Graph (Figure 11):* The Wireshark I/O graph (packets per interval vs. time) shows the session's traffic profile: a low baseline (~5 packets/sec during normal PLC polling), moderate activity during write-based attacks (attacks 1–5, 8), and dramatic spikes exceeding 2,000 packets/interval during the Modbus Flood (attack 6) and Multi-Stage disruption phase (attack 7 phase 3). The temporal correlation between these spikes and the attack manifest timestamps confirms the IDS's detection timing.
+
+*Conversation Statistics (Figures 12–14):* The Ethernet and IPv4 conversation views confirm 38,289 total packets (2,928 KB) between 127.0.0.1 endpoints over 464.57 seconds. The TCP conversation view reveals 26 distinct TCP streams — corresponding to the simulation's PLC polling connections plus attack tool connections. Stream durations range from sub-second (individual attack connections) to the full session duration (persistent PLC1↔PLC2 polling), providing forensic evidence of how many distinct TCP sessions each attack established.
+
+**Applicability of Other Forensic Tools:**
+
+*Volatility (memory forensics):* Not applicable to this investigation. The target systems are PLCs running bare-metal firmware (Arduino) and lightweight Python processes, not full operating systems with paged virtual memory. PLC memory is accessible only through Modbus register reads, which the investigation captures via PLC register snapshots in the system artifacts. In a production CPS environment with Windows/Linux-based HMI workstations, Volatility would be valuable for examining memory of compromised SCADA operator stations.
+
+*Autopsy (disk forensics):* Not applicable. The simulated PLCs do not have persistent filesystems — their state exists only in Modbus registers and the SQLite state database. The investigation captures the equivalent of disk forensics through PLC register snapshots at 19 points in the investigation timeline. In a production environment, Autopsy would be relevant for examining compromised engineering workstations or historian servers.
+
+**IDS Alert Analysis:**
 
 The investigation captured 74,870 IDS alerts over a 7.5-minute session encompassing all eight attack scenarios, including the Stuxnet-style rootkit MitM attack.
 
@@ -548,8 +572,27 @@ The forensic investigation — conducted against a MiniCPS water treatment simul
 
 **Word Count:** Approximately 3,000 words
 
-**Appendices (to include separately):**
-- Appendix A: Source Code Repository (GitHub link)
-- Appendix B: ML Model Training Scripts
-- Appendix C: Snort Configuration Rules
-- Appendix D: Sample Forensic Artefacts
+**Appendices:**
+- Appendix A: Source Code Repository — https://github.com/JabbaghYounes/CITY3116-1
+- Appendix B: Wireshark Screenshots (`evidence/screenshots/`)
+- Appendix C: Investigation Screen Recording
+- Appendix D: Forensic Artefacts (`evidence/run-20260324-212752/`)
+
+**Appendix B: Wireshark Screenshots**
+
+| Figure | File | Description |
+|--------|------|-------------|
+| 01 | `01-pcap-opened-raw-tcp.png` | PCAP opened in Wireshark showing raw TCP traffic on loopback |
+| 02 | `02-decode-as-modbus-tcp.png` | "Decode As" dialog configuring port 5502 as Modbus/TCP |
+| 03 | `03-modbus-dissected-write-read.png` | Modbus-decoded traffic showing FC 0x06 (Write Register) and FC 0x03 (Read Holding Registers) |
+| 04 | `04-modbus-exception-illegal-address.png` | Modbus exception response during flood — "Illegal data address" |
+| 05 | `05-filter-fc05-write-coil.png` | Display filter `modbus.func_code == 5` — Write Coil commands during pump attacks |
+| 06 | `06-filter-fc05-write-coil-detail.png` | FC 0x05 packet detail showing coil address and value (ON/OFF) |
+| 07 | `07-filter-fc06-write-register.png` | Display filter `modbus.func_code == 6` — Write Register during valve/spoofing attacks |
+| 08 | `08-filter-fc06-write-register-detail.png` | FC 0x06 packet detail showing register address and written value |
+| 09 | `09-flood-fc03-read-exceptions.png` | FC 0x03 flood traffic with interleaved exception responses |
+| 10 | `10-flood-fc03-exception-detail.png` | Exception response detail — "Illegal data address" confirming PLC saturation |
+| 11 | `11-io-graph-traffic-spikes.png` | I/O Graph showing traffic spikes during flood attacks (>2000 packets/interval) |
+| 12 | `12-conversations-ethernet.png` | Conversation statistics (Ethernet): 38,289 packets, 2,928 KB, 464.57s |
+| 13 | `13-conversations-ipv4.png` | Conversation statistics (IPv4): all traffic 127.0.0.1 ↔ 127.0.0.1 |
+| 14 | `14-conversations-tcp-streams.png` | Conversation statistics (TCP): 26 streams with per-flow packet counts and durations |
