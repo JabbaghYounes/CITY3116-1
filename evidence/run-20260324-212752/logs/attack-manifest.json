@@ -1,0 +1,73 @@
+{
+  "investigation_start": "2026-03-24T21:28:22",
+  "baseline_seconds": 20,
+  "gap_seconds": 15,
+  "attacks": [
+    {
+      "name": "command_injection",
+      "label": "Command Injection",
+      "description": "Forces pump ON/OFF every 5s via Write Coil (FC 0x05)",
+      "start_time": "2026-03-24T21:28:22",
+      "end_time": "2026-03-24T21:29:07",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "pump_oscillation",
+      "label": "Pump Oscillation",
+      "description": "Rapid pump toggle every 2s (Stuxnet-style)",
+      "start_time": "2026-03-24T21:29:22",
+      "end_time": "2026-03-24T21:30:08",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "valve_manipulation",
+      "label": "Valve Manipulation",
+      "description": "Random valve positions (0-180) every 3s via Write Register (FC 0x06)",
+      "start_time": "2026-03-24T21:30:23",
+      "end_time": "2026-03-24T21:31:08",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "replay_attack",
+      "label": "Replay Attack",
+      "description": "Replays fixed 4-command ON/OFF sequence every 1s",
+      "start_time": "2026-03-24T21:31:23",
+      "end_time": "2026-03-24T21:32:09",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "sensor_spoofing",
+      "label": "Sensor Spoofing",
+      "description": "Writes fake tank levels (0-100) every 2s via Write Register (FC 0x06)",
+      "start_time": "2026-03-24T21:32:24",
+      "end_time": "2026-03-24T21:33:09",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "modbus_flood",
+      "label": "Modbus Flood (DoS)",
+      "description": "100x Read Holding Registers (FC 0x03) in tight loop",
+      "start_time": "2026-03-24T21:33:24",
+      "end_time": "2026-03-24T21:33:44",
+      "duration_seconds": 20.1
+    },
+    {
+      "name": "multi_stage",
+      "label": "Multi-Stage Attack",
+      "description": "3-phase: recon (10s) -> manipulation (20s) -> flood (~10s)",
+      "start_time": "2026-03-24T21:34:00",
+      "end_time": "2026-03-24T21:34:30",
+      "duration_seconds": 30.6
+    },
+    {
+      "name": "stuxnet_rootkit",
+      "label": "Stuxnet-Style Rootkit (MitM)",
+      "description": "MitM proxy: intermittent attack cycles (20s interval, 8s active) \u2014 actuator manipulation + sensor falsification",
+      "start_time": "2026-03-24T21:34:46",
+      "end_time": "2026-03-24T21:35:46",
+      "duration_seconds": 60.3
+    }
+  ],
+  "investigation_end": "2026-03-24T21:35:46",
+  "total_attacks": 8
+}

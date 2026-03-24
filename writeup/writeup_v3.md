@@ -285,7 +285,7 @@ The following insights are drawn directly from implementing and deploying the ID
 
 ### 3.1 Attack Scenarios
 
-The forensic investigation executes seven automated attack scenarios against the MiniCPS water treatment simulation, targeting PLC 1's Modbus TCP server (port 5502) on localhost. Attacks are grouped into three categories aligned with common CPS threat models:
+The forensic investigation executes eight automated attack scenarios against the MiniCPS water treatment simulation, targeting PLC 1's Modbus TCP server (port 5502) on localhost. Attacks are grouped into four categories aligned with common CPS threat models:
 
 **Process Manipulation Attacks (Scenarios 1–5):**
 
@@ -305,7 +305,11 @@ These exploit the absence of authentication in Modbus TCP to inject unauthorised
 
 7. **Multi-Stage Attack** — Three-phase attack simulating an APT lifecycle: reconnaissance (5× register reads over 10 seconds), process manipulation (20× random pump and valve writes over 20 seconds), and disruption (200× read flood).
 
-All attacks use the pymodbus 3.x framework and target the simulation over a persistent TCP connection. The attack runner automates execution with 15-second gaps between attacks to allow flow expiration and IDS classification.
+**Man-in-the-Middle (Scenario 8):**
+
+8. **Stuxnet-Style Rootkit** — Async MitM proxy with intermittent attack cycles (20-second interval, 8-second active duration). During active cycles: randomly oscillates the pump, sets random valve positions (20–160°), and falsifies sensor readings (reports fake tank level of 50 regardless of actual value). During stealth cycles: passes through legitimate traffic unmodified. This mirrors Stuxnet's documented behaviour of periodically manipulating centrifuge speeds while reporting normal telemetry to operators.
+
+All attacks use the pymodbus 3.x framework and target the simulation over persistent TCP connections. The attack runner automates execution with 15-second gaps between attacks to allow flow expiration and IDS classification. System artifacts (process list, network connections, PLC register snapshots) are captured before and after each attack for forensic correlation.
 
 ### 3.2 Forensic Tools and Methodology
 
@@ -319,11 +323,13 @@ All attacks use the pymodbus 3.x framework and target the simulation over a pers
 
 4. **Attack Manifest (custom):** JSON log recording the exact start/end timestamp and duration of each attack, enabling precise correlation between attack periods and IDS alerts.
 
+5. **System Artifact Collection (custom):** Automated capture of host-level forensic data at baseline, before/after each attack, and post-investigation: process listings (`ps aux`), network connection tables (`ss -tunap`), and PLC register snapshots (Modbus read of all 6 holding registers + pump coil). These artifacts document the system state at each investigation phase, enabling forensic reconstruction of how each attack altered the physical process.
+
 **Forensic Methodology:**
 
 The investigation follows NIST SP 800-86 guidelines:
 
-1. **Collection:** Three evidence streams captured simultaneously — full packet capture (tcpdump, 3.5 MB PCAP, 38,592 packets), IDS alert log (JSONL, 72,422 alerts), and attack manifest (JSON, 7 attacks with timestamps). All collection began before the first attack and continued through a 20-second post-attack expiration window.
+1. **Collection:** Four evidence streams captured simultaneously — full packet capture (tcpdump, 3.5 MB PCAP), IDS alert log (JSONL, 74,870 alerts), attack manifest (JSON, 8 attacks with timestamps), and system artifacts (process lists, network connections, PLC register snapshots at 19 capture points). All collection began before the first attack and continued through a 20-second post-attack expiration window.
 
 2. **Examination:** IDS alerts grouped by detection source (`rule-engine`, `write-rate`, `modbus-analysis`) and correlated with attack manifest timestamps. PCAP analysed in Wireshark with Modbus dissector filters (`modbus.func_code == 5`, `modbus.func_code == 3`).
 
@@ -333,17 +339,17 @@ The investigation follows NIST SP 800-86 guidelines:
 
 ### 3.3 Forensic Analysis
 
-The investigation captured 30,781 packets (18,312 Modbus) and generated 72,422 IDS alerts over a 6-minute session encompassing all seven attack scenarios.
+The investigation captured 74,870 IDS alerts over a 7.5-minute session encompassing all eight attack scenarios, including the Stuxnet-style rootkit MitM attack.
 
 **Detection Results by Source:**
 
 | Detection Layer | Alerts | Attacks Detected | Description |
 |-----------------|--------|------------------|-------------|
-| ML — Modbus anomaly | 17 | All 7 attacks | Flow-level classification: DoS (4), R2L (12), Probe (1) |
-| CPS physics engine | Per-attack | Attacks 1–5, 7 | Process-aware: pump oscillation, sensor spoofing, valve bounds, state inconsistency |
-| Modbus flood detection | 8,126 | Attacks 6, 7 (phase 3) | Rate-based: >50 reads/sec; flow-based: >50 pps with >20 packets |
-| Modbus write-rate | 300 | Attacks 4, 5, 7 (phase 2) | >2.0 writes/sec in a 10-second sliding window |
-| Rule engine (generic) | 43,207 | Background traffic | Port scan, SYN flood, DNS exfiltration pattern rules |
+| ML — Modbus anomaly | 17 | All 8 attacks | Flow-level classification: DoS (2), R2L (15) |
+| CPS physics engine | 264 | Attacks 2, 3, 5, 7, 8 | Pump oscillation (75), sensor spoofing (92), valve/pump mismatch (96), rate-of-change (1) |
+| Modbus flood detection | 13,109 | Attacks 6, 7 (phase 3) | Rate-based: >50 reads/sec; flow-based: >50 pps with >20 packets |
+| Modbus write-rate | 320 | Attacks 4, 5, 7, 8 | >2.0 writes/sec in a 10-second sliding window |
+| Rule engine (generic) | 61,160 | Background traffic | Port scan, SYN flood, DNS exfiltration pattern rules |
 
 **ML-Based Classification (All Attacks):**
 
@@ -361,14 +367,12 @@ The DoS classification correctly identified the flood attacks with 99% confidenc
 
 The physics engine maintains a live model of the plant's physical state by observing Modbus register values, then validates every write command against the plant's operational constraints. This layer detected attacks that neither the rate-based detectors nor the generic rule engine could identify:
 
-| Physics Check | Attacks Detected | Example Alert |
-|---------------|-----------------|---------------|
-| Pump oscillation (toggle < 5s) | 2 (Pump Oscillation), 1 (Command Injection) | "Rapid pump oscillation — 15 toggles in 60s, last interval 2.0s" |
-| Unsafe actuator command | 1 (Command Injection), 2 (Pump Oscillation) | "Pump forced ON while tank at 890 (>869 overflow threshold)" |
-| Sensor spoofing | 5 (Sensor Spoofing), 7 (Multi-Stage phase 2) | "Direct write to tank level register — sensor spoofing detected" |
-| Valve bounds violation | 3 (Valve Manipulation) | "Valve position 195 exceeds physical maximum 180°" |
-| Valve/pump mismatch | 3 (Valve Manipulation), 7 (Multi-Stage) | "Valve set to 160° but pump is OFF (expected ~40°)" |
-| Rate-of-change violation | 5 (Sensor Spoofing) | "Tank level changed 45→900 (427 units/sec) — exceeds physical rate limit" |
+| Physics Check | Alerts | Attacks Detected | Example Alert |
+|---------------|--------|-----------------|---------------|
+| Pump oscillation (toggle < 5s) | 75 | 2 (Pump Oscillation), 4 (Replay), 7 (Multi-Stage), 8 (Rootkit) | "Rapid pump oscillation — 22 toggles in 60s, last interval 2.0s" |
+| Sensor spoofing (write to read-only reg) | 92 | 5 (Sensor Spoofing) | "Direct write to tank level register (addr 0, val 49) — sensor spoofing detected" |
+| Valve/pump state mismatch | 96 | 3 (Valve Manipulation), 8 (Rootkit) | "Valve set to 8° but pump is ON (expected ~120°)" |
+| Rate-of-change violation | 1 | 5 (Sensor Spoofing) | "Tank level changed 539→49 (2539 units/sec) — exceeds physical rate limit" |
 
 This layer is uniquely CPS-tailored: a generic network IDS cannot detect that valve position 195° is physically impossible or that writing to register 0 constitutes sensor spoofing rather than a legitimate SCADA command. The physics engine encodes domain knowledge about the water treatment process — tank capacity (0–1023 ADC), valve servo range (0–180°), pump control thresholds (ON < 30%, OFF > 85%), and maximum fill/drain rates — and uses this to distinguish legitimate automation from attack manipulation.
 
@@ -382,9 +386,21 @@ The Modbus flood attack (Attack 6) produced 8,126 flood alerts in 20 seconds, wi
 
 The write-rate detector triggered 300 alerts. The Replay Attack (Attack 4) generated FC 0x05 write-rate alerts at 2.1–4.0 writes/sec — the 1-second replay interval combined with the simulation's own PLC writes exceeded the 2.0 writes/sec threshold. The Multi-Stage attack's manipulation phase (Attack 7, phase 2) generated the highest write rates at 7.9–8.0 writes/sec (FC 0x06). Function code breakdown: 228 alerts for FC 0x05 (Write Coil) and 72 for FC 0x06 (Write Register).
 
+**Stuxnet Rootkit MitM Detection (Attack 8):**
+
+The rootkit's intermittent attack cycles were detected by multiple layers: the CPS physics engine flagged pump oscillation (13 toggles in 60s, interval 1–3s), valve/pump state mismatches (valve set to 93° while pump OFF, expected ~40°), and the ML classifier identified the attack flows as R2L. PLC register snapshots captured before and after the rootkit show the plant state was successfully manipulated: baseline tank level of 430 with pump OFF and valve at 40° was altered to tank level 816 with pump ON and valve at 120°. The rootkit's sensor falsification (reporting fake level 50 regardless of actual value) was visible in the IDS logs as a series of register writes to address 0 with values inconsistent with the physical process dynamics.
+
+**System Artifact Analysis:**
+
+PLC register snapshots at 19 capture points provide a forensic timeline of physical process state. Key observations:
+- **Baseline** (pre-attack): tank=430, valve=40°, pump=OFF, temp=290, alarm=0 — normal steady state
+- **Post-sensor spoofing**: tank=799, valve=120°, pump=ON, temp=582 — plant continued operating normally despite spoofed register values, demonstrating that the PLC's internal control logic overrode the falsified readings
+- **Post-rootkit**: tank=816, valve=120°, pump=ON, temp=600 — rootkit's actuator manipulation left the plant in an elevated state
+- Process listings and network connection tables confirm no persistent backdoor processes remained after each attack terminated
+
 **False Positive Analysis:**
 
-43,207 alerts (84% of total) originated from generic network rules designed for internet traffic. On the loopback interface, where all traffic originates from 127.0.0.1, rules for port scanning, DNS exfiltration, and SYN flooding fire continuously on normal simulation traffic. These represent an expected limitation of deploying generic IDS signatures in a localhost simulation environment; in a production deployment with distinct source/destination IPs, these rules would not trigger on legitimate PLC-to-PLC traffic. Notably, the ML layer produced zero false positives during the 20-second baseline period before attacks began.
+61,160 alerts (82% of total) originated from generic network rules designed for internet traffic. On the loopback interface, where all traffic originates from 127.0.0.1, rules for port scanning, DNS exfiltration, and SYN flooding fire continuously on normal simulation traffic. These represent an expected limitation of deploying generic IDS signatures in a localhost simulation environment; in a production deployment with distinct source/destination IPs, these rules would not trigger on legitimate PLC-to-PLC traffic. Notably, the ML layer produced zero false positives during the 20-second baseline period before attacks began.
 
 ### 3.4 AI/ML in Forensic Analysis
 
@@ -415,19 +431,20 @@ The structured JSONL alert format (51,650 entries) enables programmatic querying
 **INCIDENT REPORT: CPS Water Treatment Plant — Automated Attack Campaign**
 
 **Executive Summary:**
-The CPS water treatment simulation experienced a seven-stage automated attack campaign targeting the PLC's Modbus TCP interface. The IDS detected 8,443 attack-specific alerts across three detection layers: ML-based flow classification (17 alerts identifying DoS, R2L, and Probe attacks), Modbus flood detection (8,126 alerts), and write-rate anomaly detection (300 alerts). The investigation captured 38,592 packets in a 2.5 MB PCAP file, 51,650 total IDS alerts, and a timestamped attack manifest enabling full timeline reconstruction.
+The CPS water treatment simulation experienced an eight-stage automated attack campaign targeting the PLC's Modbus TCP interface, including a Stuxnet-style MitM rootkit. The IDS detected 13,710 attack-specific alerts across four detection layers: ML-based flow classification (17 alerts identifying DoS and R2L attacks), CPS physics engine (264 alerts for pump oscillation, sensor spoofing, and valve/pump state violations), Modbus flood detection (13,109 alerts), and write-rate anomaly detection (320 alerts). The investigation captured a 3.5 MB PCAP file, 74,870 total IDS alerts, a timestamped attack manifest, and 19 system artifact snapshots (process lists, network connections, PLC register states) enabling full timeline reconstruction.
 
 **Attack Timeline (from attack-manifest.json):**
 
 | Time (UTC) | Duration | Attack | IDS Detection |
 |------------|----------|--------|---------------|
-| 19:25:38 | 45s | Command Injection (FC 0x05, 5s interval) | ML: R2L (70%) |
-| 19:26:34 | 45s | Pump Oscillation (FC 0x05, 2s interval) | ML: R2L (70%) |
-| 19:27:34 | 45s | Valve Manipulation (FC 0x06, 3s interval) | ML: R2L (70%) |
-| 19:28:29 | 45s | Replay Attack (FC 0x05, 1s interval) | ML: R2L (70%) + 80 write-rate |
-| 19:29:30 | 45s | Sensor Spoofing (FC 0x06, 2s interval) | ML: R2L (70%) + 80 write-rate |
-| 19:30:31 | 20s | Modbus Flood (FC 0x03, tight loop) | ML: DoS (99%) + 8,126 flood |
-| 19:30:55 | 31s | Multi-Stage (recon→manipulation→flood) | ML: DoS + R2L + Probe + 140 write-rate |
+| 21:28:22 | 45s | Command Injection (FC 0x05, 5s interval) | ML: R2L (70%) |
+| 21:29:22 | 45s | Pump Oscillation (FC 0x05, 2s interval) | ML: R2L (70%) + CPS: 21 oscillation alerts |
+| 21:30:23 | 45s | Valve Manipulation (FC 0x06, 3s interval) | ML: R2L (70%) + CPS: 32 valve/pump mismatch |
+| 21:31:23 | 45s | Replay Attack (FC 0x05, 1s interval) | ML: R2L (70%) + CPS: 43 oscillation + write-rate |
+| 21:32:24 | 45s | Sensor Spoofing (FC 0x06, 2s interval) | ML: R2L (70%) + CPS: 92 spoofing + 1 rate-of-change |
+| 21:33:24 | 20s | Modbus Flood (FC 0x03, tight loop) | ML: DoS (99%) + 13,109 flood |
+| 21:34:00 | 31s | Multi-Stage (recon→manipulation→flood) | ML: DoS + R2L + write-rate |
+| 21:34:46 | 60s | Stuxnet Rootkit (MitM, intermittent) | ML: R2L (70%) + CPS: oscillation + valve mismatch + write-rate |
 
 **Identified Anomalies:**
 1. ML classified flood flows as DoS at 99% confidence, with individual flows containing 873–2,840 packets (normal PLC flows: ~10 packets per scan window)
@@ -443,10 +460,11 @@ The CPS water treatment simulation experienced a seven-stage automated attack ca
 - No permanent physical process damage — simulation fail-safes and attack time-bounding prevented catastrophic states
 
 **Detection Coverage:**
-- All 7 attacks detected by multiple layers (ML flow classification detected all 7; CPS physics detected 6; write-rate detected 3; flood detection detected 2)
-- The CPS physics engine provides the deepest CPS-specific detection: pump oscillation catches Stuxnet-style attacks, sensor spoofing detection flags writes to read-only registers, and valve bounds checking rejects physically impossible commands
+- All 8 attacks detected by multiple layers (ML flow classification detected all 8; CPS physics detected 5 with 264 alerts; write-rate detected 4; flood detection detected 2)
+- The CPS physics engine provides the deepest CPS-specific detection: pump oscillation caught the Stuxnet rootkit's intermittent toggling (13 toggles in 60s), sensor spoofing detection flagged 92 writes to read-only registers, and valve/pump mismatch caught 96 inconsistent actuator states during valve manipulation and rootkit attacks
+- System artifacts (19 PLC register snapshots) enable forensic reconstruction of physical process state at each attack phase
 - Zero ML false positives during 20-second baseline period
-- Attacks 1–3 operated below the write-rate threshold but were caught by both ML classification (R2L) and CPS physics (unsafe commands, oscillation)
+- Attacks 1 and 3 operated below the write-rate threshold but were caught by ML classification (R2L) and CPS physics (valve/pump mismatch)
 - CNN+LSTM neural network requires retraining on ICS-specific datasets (SWaT, Mississippi State SCADA) to replace the threshold-based anomaly detector
 
 **Recommendations:**
@@ -490,7 +508,7 @@ Address OWASP Top 10 vulnerabilities relevant to CPS web interfaces:
 
 This report presented the design and live evaluation of an AI/ML-driven Intrusion Detection System tailored explicitly for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines a 20-rule signature engine, Modbus rate-based anomaly detection, a CPS physics-aware detection engine encoding physical process constraints, and a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017. The physics engine — which validates Modbus commands against plant-specific constraints (register bounds, pump oscillation frequency, valve/pump state consistency, sensor spoofing, rate-of-change limits) — represents the system's most distinctly CPS-tailored capability, detecting process-level attacks that generic network IDS cannot identify.
 
-The forensic investigation — conducted against a MiniCPS water treatment simulation with seven automated Modbus TCP attacks — validated the IDS's detection capabilities using NIST SP 800-86 methodology. The investigation captured 38,592 packets and 51,650 IDS alerts across four detection layers: ML-based flow classification detected all 7 attacks (DoS at 99% confidence, R2L at 70%, Probe at 65%), the CPS physics engine detected 6 attacks through process constraint violations (pump oscillation, sensor spoofing, valve bounds, state inconsistency), Modbus flood detection identified read-flood attacks at up to 10,500 packets/sec, and write-rate anomaly detection flagged manipulation attacks exceeding 2.0 writes/sec. The iterative investigation process — discovering the CNN+LSTM's domain mismatch (99.83% offline but 0% on Modbus traffic), then implementing both a Modbus-aware anomaly detector and a physics-based process state validator — demonstrates a critical lesson for AI-driven CPS security: model accuracy is only meaningful within the training domain, and effective deployment requires both protocol-specific adaptation and physical process awareness matched to the target environment. Future work should prioritise training on ICS-specific datasets (SWaT, Mississippi State SCADA) to enable ML-native detection of industrial protocol attacks without reliance on threshold-based domain adaptation layers.
+The forensic investigation — conducted against a MiniCPS water treatment simulation with eight automated attacks including a Stuxnet-style MitM rootkit — validated the IDS's detection capabilities using NIST SP 800-86 methodology. The investigation captured 74,870 IDS alerts and 19 system artifact snapshots across four detection layers: ML-based flow classification detected all 8 attacks (DoS at 99% confidence, R2L at 70%), the CPS physics engine generated 264 alerts detecting pump oscillation (75), sensor spoofing (92), and valve/pump state violations (96), Modbus flood detection identified read-flood attacks with 13,109 alerts, and write-rate anomaly detection flagged manipulation attacks with 320 alerts. The iterative investigation process — discovering the CNN+LSTM's domain mismatch (99.83% offline but 0% on Modbus traffic), then implementing both a Modbus-aware anomaly detector and a physics-based process state validator — demonstrates a critical lesson for AI-driven CPS security: model accuracy is only meaningful within the training domain, and effective deployment requires both protocol-specific adaptation and physical process awareness matched to the target environment. Future work should prioritise training on ICS-specific datasets (SWaT, Mississippi State SCADA) to enable ML-native detection of industrial protocol attacks without reliance on threshold-based domain adaptation layers.
 
 ---
 
