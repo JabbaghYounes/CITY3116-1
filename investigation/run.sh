@@ -6,7 +6,7 @@
 #    Top-left:      Plant Dashboard
 #    Top-right:     IDS Monitor (rule engine + CNN+LSTM)
 #    Bottom-left:   tcpdump packet capture
-#    Bottom-right:  Attack runner (auto-sequences all 7 attacks)
+#    Bottom-right:  Attack runner (auto-sequences all 8 attacks incl. Stuxnet rootkit)
 #
 #  Usage:  ./investigation/run.sh
 #  Stop:   tmux kill-session -t cps-investigation
