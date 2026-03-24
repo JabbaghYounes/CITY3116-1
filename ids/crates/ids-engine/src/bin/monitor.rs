@@ -69,6 +69,327 @@ struct Cli {
     ml_threshold: f64,
 }
 
+// ---------------------------------------------------------------------------
+// CPS Process-Aware Detection
+// ---------------------------------------------------------------------------
+
+/// Physical process constraints for the water treatment plant.
+/// These mirror the control logic in arduino-plc-firmware.cpp and plant/simulation/plc1.py.
+mod cps {
+    /// Tank level ADC range (0–1023 for 10-bit ADC).
+    #[allow(dead_code)]
+    pub const TANK_LEVEL_MIN: u16 = 0;
+    pub const TANK_LEVEL_MAX: u16 = 1023;
+    /// Valve servo range (degrees).
+    #[allow(dead_code)]
+    pub const VALVE_MIN: u16 = 0;
+    pub const VALVE_MAX: u16 = 180;
+    /// Temperature alarm threshold (Celsius, DHT11 range).
+    pub const TEMP_MAX_REASONABLE: u16 = 80;
+    /// Control logic thresholds (% of 1023).
+    pub const PUMP_ON_THRESHOLD: u16 = (1023.0 * 0.30) as u16;  // ~307
+    pub const PUMP_OFF_THRESHOLD: u16 = (1023.0 * 0.85) as u16; // ~869
+    /// Normal valve positions for pump states.
+    pub const VALVE_PUMP_ON: u16 = 120;
+    pub const VALVE_PUMP_OFF: u16 = 40;
+    /// Maximum plausible tank level change per second (ADC units).
+    /// Fill rate is ~5 ADC/cycle at 200ms = ~25/sec. Allow 2x margin.
+    pub const MAX_TANK_RATE: f64 = 50.0;
+    /// Minimum interval between pump toggles to be considered normal (seconds).
+    pub const MIN_PUMP_TOGGLE_INTERVAL: f64 = 5.0;
+
+    /// Modbus register addresses (PLC 1 SCADA-facing).
+    pub const REG_TANK_LEVEL: u16 = 0;
+    pub const REG_VALVE_POS: u16 = 1;
+    pub const REG_TEMPERATURE: u16 = 2;
+    // pub const REG_SOUND: u16 = 3;
+    // pub const REG_ULTRASONIC: u16 = 4;
+    // pub const REG_ALARM: u16 = 5;
+    pub const COIL_PUMP: u16 = 0;
+}
+
+/// Tracks physical process state from observed Modbus register writes/responses
+/// to detect physics-violating anomalies.
+struct ProcessStateTracker {
+    /// Last known tank level (from register reads/writes).
+    tank_level: Option<u16>,
+    tank_level_time: Option<chrono::DateTime<Utc>>,
+    /// Last known pump state (from coil writes: 0xFF00=ON, 0x0000=OFF).
+    pump_state: Option<bool>,
+    /// Timestamps of pump toggle commands for oscillation detection.
+    pump_toggles: Vec<chrono::DateTime<Utc>>,
+    /// Last known valve position.
+    valve_pos: Option<u16>,
+    /// Last known temperature.
+    temperature: Option<u16>,
+}
+
+impl ProcessStateTracker {
+    fn new() -> Self {
+        Self {
+            tank_level: None,
+            tank_level_time: None,
+            pump_state: None,
+            pump_toggles: Vec::new(),
+            valve_pos: None,
+            temperature: None,
+        }
+    }
+
+    /// Process a Modbus write command and return any physics-based alerts.
+    fn process_write(
+        &mut self,
+        fc: u8,
+        register_addr: Option<u16>,
+        register_val: Option<u16>,
+        packet: &PacketRecord,
+    ) -> Vec<Alert> {
+        let mut alerts = Vec::new();
+        let now = Utc::now();
+
+        match fc {
+            // Write Single Coil (FC 0x05) — pump control
+            0x05 => {
+                if let (Some(addr), Some(val)) = (register_addr, register_val) {
+                    if addr == cps::COIL_PUMP {
+                        let pump_on = val == 0xFF00;
+                        let prev_state = self.pump_state;
+                        self.pump_state = Some(pump_on);
+
+                        // Detect pump oscillation (Stuxnet-style rapid toggling)
+                        if prev_state.is_some() && prev_state != Some(pump_on) {
+                            self.pump_toggles.push(now);
+                            // Keep only last 60 seconds of toggles
+                            let cutoff = now - chrono::Duration::seconds(60);
+                            self.pump_toggles.retain(|t| *t > cutoff);
+
+                            if self.pump_toggles.len() >= 2 {
+                                let n = self.pump_toggles.len();
+                                let last_interval = (self.pump_toggles[n - 1]
+                                    - self.pump_toggles[n - 2])
+                                    .num_milliseconds() as f64
+                                    / 1000.0;
+                                if last_interval < cps::MIN_PUMP_TOGGLE_INTERVAL {
+                                    alerts.push(cps_alert(
+                                        packet,
+                                        format!(
+                                            "CPS: Rapid pump oscillation detected — {} toggles in 60s, \
+                                             last interval {:.1}s (min safe: {:.0}s)",
+                                            self.pump_toggles.len(),
+                                            last_interval,
+                                            cps::MIN_PUMP_TOGGLE_INTERVAL,
+                                        ),
+                                        Severity::Critical,
+                                        AttackCategory::U2R,
+                                    ));
+                                }
+                            }
+                        }
+
+                        // Detect pump command contradicting process state
+                        // (e.g., turning pump ON when tank is above 85%)
+                        if let Some(level) = self.tank_level {
+                            if pump_on && level > cps::PUMP_OFF_THRESHOLD {
+                                alerts.push(cps_alert(
+                                    packet,
+                                    format!(
+                                        "CPS: Pump forced ON while tank at {} (>{} overflow threshold) \
+                                         — possible command injection",
+                                        level, cps::PUMP_OFF_THRESHOLD,
+                                    ),
+                                    Severity::High,
+                                    AttackCategory::R2L,
+                                ));
+                            }
+                            if !pump_on && level < cps::PUMP_ON_THRESHOLD {
+                                alerts.push(cps_alert(
+                                    packet,
+                                    format!(
+                                        "CPS: Pump forced OFF while tank at {} (<{} low threshold) \
+                                         — possible command injection",
+                                        level, cps::PUMP_ON_THRESHOLD,
+                                    ),
+                                    Severity::High,
+                                    AttackCategory::R2L,
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            // Write Single Register (FC 0x06) — valve, sensor spoofing
+            0x06 => {
+                if let (Some(addr), Some(val)) = (register_addr, register_val) {
+                    match addr {
+                        a if a == cps::REG_VALVE_POS => {
+                            // Valve out of physical range
+                            if val > cps::VALVE_MAX {
+                                alerts.push(cps_alert(
+                                    packet,
+                                    format!(
+                                        "CPS: Valve position {} exceeds physical maximum {}° \
+                                         — invalid actuator command",
+                                        val, cps::VALVE_MAX,
+                                    ),
+                                    Severity::High,
+                                    AttackCategory::R2L,
+                                ));
+                            }
+                            // Valve position inconsistent with pump state
+                            if let Some(pump_on) = self.pump_state {
+                                let expected = if pump_on {
+                                    cps::VALVE_PUMP_ON
+                                } else {
+                                    cps::VALVE_PUMP_OFF
+                                };
+                                let diff = (val as i32 - expected as i32).unsigned_abs();
+                                if diff > 30 {
+                                    alerts.push(cps_alert(
+                                        packet,
+                                        format!(
+                                            "CPS: Valve set to {}° but pump is {} (expected ~{}°) \
+                                             — valve/pump state mismatch",
+                                            val,
+                                            if pump_on { "ON" } else { "OFF" },
+                                            expected,
+                                        ),
+                                        Severity::Medium,
+                                        AttackCategory::R2L,
+                                    ));
+                                }
+                            }
+                            self.valve_pos = Some(val);
+                        }
+                        a if a == cps::REG_TANK_LEVEL => {
+                            // Direct write to tank level register = sensor spoofing
+                            // (SCADA should only read this, not write)
+                            alerts.push(cps_alert(
+                                packet,
+                                format!(
+                                    "CPS: Direct write to tank level register (addr {}, val {}) \
+                                     — sensor spoofing detected",
+                                    addr, val,
+                                ),
+                                Severity::Critical,
+                                AttackCategory::R2L,
+                            ));
+                            // Also check for impossible values
+                            if val > cps::TANK_LEVEL_MAX {
+                                alerts.push(cps_alert(
+                                    packet,
+                                    format!(
+                                        "CPS: Spoofed tank level {} exceeds ADC maximum {} \
+                                         — physically impossible value",
+                                        val, cps::TANK_LEVEL_MAX,
+                                    ),
+                                    Severity::Critical,
+                                    AttackCategory::R2L,
+                                ));
+                            }
+                            // Check rate of change
+                            if let (Some(prev_level), Some(prev_time)) =
+                                (self.tank_level, self.tank_level_time)
+                            {
+                                let dt = (now - prev_time).num_milliseconds().max(1) as f64
+                                    / 1000.0;
+                                let rate =
+                                    (val as f64 - prev_level as f64).abs() / dt;
+                                if rate > cps::MAX_TANK_RATE {
+                                    alerts.push(cps_alert(
+                                        packet,
+                                        format!(
+                                            "CPS: Tank level changed {} → {} ({:.0} units/sec) \
+                                             — exceeds physical rate limit ({:.0} units/sec)",
+                                            prev_level, val, rate, cps::MAX_TANK_RATE,
+                                        ),
+                                        Severity::High,
+                                        AttackCategory::R2L,
+                                    ));
+                                }
+                            }
+                            self.tank_level = Some(val);
+                            self.tank_level_time = Some(now);
+                        }
+                        a if a == cps::REG_TEMPERATURE => {
+                            if val > cps::TEMP_MAX_REASONABLE {
+                                alerts.push(cps_alert(
+                                    packet,
+                                    format!(
+                                        "CPS: Temperature register set to {}°C — exceeds \
+                                         reasonable sensor range (max {}°C)",
+                                        val, cps::TEMP_MAX_REASONABLE,
+                                    ),
+                                    Severity::Medium,
+                                    AttackCategory::R2L,
+                                ));
+                            }
+                            self.temperature = Some(val);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+        alerts
+    }
+
+    /// Update state from observed Modbus read responses (FC 0x03 response).
+    /// This lets us track process state even from normal polling traffic.
+    fn observe_read_response(&mut self, data: &[u8]) {
+        // Modbus FC 0x03 response format: [byte_count, reg0_hi, reg0_lo, reg1_hi, ...]
+        // PLC1 returns 6 registers: tank, valve, temp, sound, ultrasonic, alarm
+        if data.len() >= 13 {
+            // data[0] = byte count (should be 12 for 6 registers)
+            let byte_count = data[0] as usize;
+            if byte_count >= 12 && data.len() >= 13 {
+                let tank = u16::from_be_bytes([data[1], data[2]]);
+                let valve = u16::from_be_bytes([data[3], data[4]]);
+                let temp = u16::from_be_bytes([data[5], data[6]]);
+
+                if tank <= cps::TANK_LEVEL_MAX {
+                    self.tank_level = Some(tank);
+                    self.tank_level_time = Some(Utc::now());
+                }
+                if valve <= cps::VALVE_MAX {
+                    self.valve_pos = Some(valve);
+                }
+                self.temperature = Some(temp);
+            }
+        }
+    }
+}
+
+fn cps_alert(
+    packet: &PacketRecord,
+    description: String,
+    severity: Severity,
+    category: AttackCategory,
+) -> Alert {
+    Alert {
+        id: Uuid::new_v4(),
+        timestamp: Utc::now(),
+        severity,
+        category,
+        source: AlertSource::Network,
+        description,
+        confidence: 0.95,
+        model_source: "cps-physics-engine".into(),
+        source_ip: Some(packet.src_ip),
+        dest_ip: Some(packet.dst_ip),
+        source_port: Some(packet.src_port),
+        dest_port: Some(packet.dst_port),
+        hostname: None,
+        pid: None,
+        affected_path: None,
+        username: None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Rate Trackers
+// ---------------------------------------------------------------------------
+
 /// Tracks Modbus write frequency per source IP for rate-based detection.
 struct WriteTracker {
     /// (source_ip, timestamp) pairs for recent writes
@@ -313,6 +634,10 @@ async fn main() -> Result<()> {
     // Write/read rate tracking
     let mut write_tracker = WriteTracker::new(10);
     let mut read_tracker = ReadTracker::new(5);
+
+    // CPS process-aware detection
+    let mut process_state = ProcessStateTracker::new();
+    let mut cps_alerts_generated: u64 = 0;
     let write_threshold = cli.write_freq_threshold;
     let read_flood_threshold = 50.0; // reads per second
     let ml_threshold = cli.ml_threshold;
@@ -356,6 +681,7 @@ async fn main() -> Result<()> {
     if classifier.is_some() {
         println!("  ML threshold:   {:.0}%", ml_threshold * 100.0);
     }
+    println!("  CPS physics:    ENABLED (process-aware anomaly detection)");
     println!("========================================");
     println!();
 
@@ -445,6 +771,24 @@ async fn main() -> Result<()> {
                         value = ?val,
                         "Modbus WRITE"
                     );
+
+                    // CPS physics-aware detection on every write
+                    let cps_alerts_list = process_state.process_write(
+                        fc, addr, val, &packet,
+                    );
+                    for alert in &cps_alerts_list {
+                        print_alert(alert);
+                        logger.log_alert(alert).await?;
+                        alerts_generated += 1;
+                        cps_alerts_generated += 1;
+                    }
+                }
+
+                // Observe read responses to passively track process state
+                // FC >= 0x80 indicates a response; FC 0x03 response contains register data
+                if fc == 0x03 && packet.raw_payload.len() > 8 {
+                    // This is a read holding registers response — extract register values
+                    process_state.observe_read_response(&packet.raw_payload[8..]);
                 }
 
                 // Detect reads at unusually high rates (flood)
@@ -610,14 +954,15 @@ async fn main() -> Result<()> {
         if (now - last_stats).num_seconds() > 15 {
             if classifier.is_some() {
                 println!(
-                    "[STATS] packets={} modbus={} flows={} alerts={} ml_inferences={} ml_detections={}",
+                    "[STATS] packets={} modbus={} flows={} alerts={} cps_physics={} ml_inferences={} ml_detections={}",
                     total_packets, modbus_packets, flow_table.len(), alerts_generated,
-                    ml_inferences, ml_detections
+                    cps_alerts_generated, ml_inferences, ml_detections
                 );
             } else {
                 println!(
-                    "[STATS] packets={} modbus={} flows={} alerts={}",
-                    total_packets, modbus_packets, flow_table.len(), alerts_generated
+                    "[STATS] packets={} modbus={} flows={} alerts={} cps_physics={}",
+                    total_packets, modbus_packets, flow_table.len(), alerts_generated,
+                    cps_alerts_generated
                 );
             }
             last_stats = now;
@@ -657,8 +1002,9 @@ async fn main() -> Result<()> {
     }
 
     println!(
-        "\n[FINAL] packets={} modbus={} alerts={} ml_inferences={} ml_detections={}",
-        total_packets, modbus_packets, alerts_generated, ml_inferences, ml_detections
+        "\n[FINAL] packets={} modbus={} alerts={} cps_physics={} ml_inferences={} ml_detections={}",
+        total_packets, modbus_packets, alerts_generated, cps_alerts_generated,
+        ml_inferences, ml_detections
     );
 
     Ok(())

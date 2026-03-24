@@ -106,6 +106,11 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
       <div class="label">Modbus Analysers</div>
       <div class="dim">Write-rate anomaly<br>Read flood detection</div>
     </div>
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">6</div>
+      <div class="label">CPS Physics Checks</div>
+      <div class="dim">Register bounds, pump oscillation,<br>sensor spoofing, state consistency</div>
+    </div>
     <div class="stat-card" style="border-left-color: #065f46;">
       <div class="num">3</div>
       <div class="label">ML Models</div>
@@ -113,7 +118,7 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
     </div>
   </div>
   <br>
-  <p class="dim">Detection pipeline: <span class="alert-tag tag-rule">Rule Engine</span> &rarr; <span class="alert-tag tag-modbus">Modbus Analysis</span> &rarr; <span class="alert-tag tag-ml">CNN+LSTM Inference</span></p>
+  <p class="dim">Detection pipeline: <span class="alert-tag tag-rule">Rule Engine</span> &rarr; <span class="alert-tag tag-modbus">Modbus Analysis</span> &rarr; <span class="alert-tag" style="background:#fce4ec;color:#b71c1c;">CPS Physics</span> &rarr; <span class="alert-tag tag-ml">CNN+LSTM Inference</span></p>
 </section>
 
 <!-- SLIDE 4: ML Models -->
@@ -213,11 +218,12 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
         <li>Python subprocess runs ONNX model (~1ms/prediction)</li>
         <li>JSON Lines IPC over stdin/stdout</li>
       </ul>
-      <h3>Modbus-Specific Detection</h3>
+      <h3>CPS-Specific Detection</h3>
       <ul>
         <li>Write-rate anomaly (&gt;2.0 writes/sec)</li>
         <li>Read flood detection (&gt;50 reads/sec)</li>
-        <li>Domain-adapted classifier for Modbus flows</li>
+        <li>Physics engine: register bounds, pump oscillation</li>
+        <li>Sensor spoofing &amp; valve/pump state consistency</li>
       </ul>
     </div>
     <div>

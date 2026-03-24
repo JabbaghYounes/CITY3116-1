@@ -117,6 +117,7 @@ The choice of implementation language is driven by the technical demands of intr
 
 3. **Detection Engine:**
    - Rule-based detection for known CPS-specific attacks (Modbus function code validation, register range whitelisting)
+   - CPS physics-aware detection: process state tracking from observed Modbus traffic, register bounds checking (valve 0–180°, tank 0–1023 ADC), pump oscillation detection (Stuxnet-style rapid toggling < 5s), valve/pump state consistency validation, sensor spoofing detection (writes to read-only registers), and rate-of-change limits based on physical process dynamics
    - ML-based anomaly detection for unknown threats
    - Ensemble approach combining multiple classifiers with weighted fusion
 
@@ -130,9 +131,11 @@ The choice of implementation language is driven by the technical demands of intr
    - Rule configuration and model retraining capabilities
 
 **CPS-Specific Design Considerations:**
-- Protocol awareness for industrial protocols (Modbus function code validation)
+- Protocol awareness for industrial protocols (Modbus function code validation, register address/value extraction)
+- Physical process modelling: the IDS encodes plant-specific constraints (tank capacity, valve servo range, pump control thresholds, fill/drain rates) and validates every Modbus write against these constraints
+- Process state tracking: passive observation of Modbus read responses maintains a live model of plant state, enabling detection of state-inconsistent commands even when individual writes appear valid
 - Whitelisting of expected communication patterns between devices
-- Time-series analysis for detecting gradual process manipulation
+- Time-series analysis for detecting gradual process manipulation (rate-of-change monitoring, pump toggle frequency tracking)
 - Minimal latency impact on control loops
 
 ### 2.3 AI/ML Implementation
@@ -148,6 +151,18 @@ The system utilises a combination of three public intrusion detection datasets t
 3. **UNSW-NB15 (2015):** A comprehensive dataset from UNSW Canberra containing 448K records across 76 numeric features, with 10 attack categories mapped to the unified 5-class scheme. Provides coverage of modern mixed attack types including backdoors, shellcode, and worms.
 
 All three datasets are mapped to a unified 5-class label scheme (Normal, DoS, Probe, R2L, U2R) enabling cross-dataset training and evaluation.
+
+**Alternative Approach — ICS-Specific Datasets:**
+
+The datasets selected above are general-purpose network intrusion datasets originating from IT network environments. An alternative approach would have been to train on ICS/SCADA-specific datasets containing labelled industrial protocol traffic:
+
+- **SWaT** (Secure Water Treatment, iTrust SUTD): 11 days of operation from a water treatment testbed with 36 labelled attacks — the closest domain match to this project's water treatment plant
+- **WADI** (Water Distribution, iTrust SUTD): 16 days of water distribution data with 15 attack scenarios, complementary to SWaT
+- **Mississippi State SCADA Gas Pipeline Dataset**: Modbus-based SCADA system with labelled command injection, reconnaissance, response injection, and DoS attacks — directly maps to the Modbus function codes used in this project's attack framework
+- **BATADAL** (Battle of Attack Detection Algorithms): Water distribution network designed for benchmarking IDS algorithms
+- **HAI** (Hardware-In-the-Loop Augmented ICS): Boiler/turbine process with both network traffic and physical process sensor measurements
+
+ICS-specific datasets would have eliminated the domain gap discovered during the forensic investigation (Section 3.4), where CIC-IDS2017's feature distributions (tens of thousands of packets at GB/s throughput) bear no resemblance to Modbus traffic patterns (tens of packets at KB/s). Training on the Mississippi State SCADA dataset in particular would have enabled the CNN+LSTM to learn Modbus-specific attack patterns directly, removing the need for the threshold-based Modbus anomaly detector as a domain adaptation layer. The general-purpose datasets were selected for their size, public availability, and the ability to demonstrate cross-era generalisation (Model D), but production CPS deployments should prioritise domain-matched training data.
 
 **Feature Engineering:**
 
@@ -323,6 +338,7 @@ The investigation captured 30,781 packets (18,312 Modbus) and generated 72,422 I
 | Detection Layer | Alerts | Attacks Detected | Description |
 |-----------------|--------|------------------|-------------|
 | ML — Modbus anomaly | 17 | All 7 attacks | Flow-level classification: DoS (4), R2L (12), Probe (1) |
+| CPS physics engine | Per-attack | Attacks 1–5, 7 | Process-aware: pump oscillation, sensor spoofing, valve bounds, state inconsistency |
 | Modbus flood detection | 8,126 | Attacks 6, 7 (phase 3) | Rate-based: >50 reads/sec; flow-based: >50 pps with >20 packets |
 | Modbus write-rate | 300 | Attacks 4, 5, 7 (phase 2) | >2.0 writes/sec in a 10-second sliding window |
 | Rule engine (generic) | 43,207 | Background traffic | Port scan, SYN flood, DNS exfiltration pattern rules |
@@ -338,6 +354,21 @@ The ML inference pipeline produced 17 alerts across all attack categories. A dua
 | Probe | 1 | Medium | 65.0% | Multi-Stage reconnaissance phase |
 
 The DoS classification correctly identified the flood attacks with 99% confidence based on packet rates exceeding 50 packets/sec. R2L classifications captured all five write-based manipulation attacks through forward/backward packet ratio analysis — attacks generate more write requests (forward) than responses (backward), deviating from the balanced request-response pattern of normal PLC polling. The single Probe alert detected the Multi-Stage attack's reconnaissance phase (5× register reads over 10 seconds).
+
+**CPS Physics-Aware Detection (Attacks 1–5, 7):**
+
+The physics engine maintains a live model of the plant's physical state by observing Modbus register values, then validates every write command against the plant's operational constraints. This layer detected attacks that neither the rate-based detectors nor the generic rule engine could identify:
+
+| Physics Check | Attacks Detected | Example Alert |
+|---------------|-----------------|---------------|
+| Pump oscillation (toggle < 5s) | 2 (Pump Oscillation), 1 (Command Injection) | "Rapid pump oscillation — 15 toggles in 60s, last interval 2.0s" |
+| Unsafe actuator command | 1 (Command Injection), 2 (Pump Oscillation) | "Pump forced ON while tank at 890 (>869 overflow threshold)" |
+| Sensor spoofing | 5 (Sensor Spoofing), 7 (Multi-Stage phase 2) | "Direct write to tank level register — sensor spoofing detected" |
+| Valve bounds violation | 3 (Valve Manipulation) | "Valve position 195 exceeds physical maximum 180°" |
+| Valve/pump mismatch | 3 (Valve Manipulation), 7 (Multi-Stage) | "Valve set to 160° but pump is OFF (expected ~40°)" |
+| Rate-of-change violation | 5 (Sensor Spoofing) | "Tank level changed 45→900 (427 units/sec) — exceeds physical rate limit" |
+
+This layer is uniquely CPS-tailored: a generic network IDS cannot detect that valve position 195° is physically impossible or that writing to register 0 constitutes sensor spoofing rather than a legitimate SCADA command. The physics engine encodes domain knowledge about the water treatment process — tank capacity (0–1023 ADC), valve servo range (0–180°), pump control thresholds (ON < 30%, OFF > 85%), and maximum fill/drain rates — and uses this to distinguish legitimate automation from attack manipulation.
 
 **Domain Adaptation Finding:** The CNN+LSTM model (Model B, 99.83% on CIC-IDS2017) predicted Normal at near-100% confidence for all Modbus flows due to a fundamental domain mismatch. CIC-IDS2017 DDoS attacks produce 50,000–200,000 packets at GB/s throughput; Modbus floods produce ~500 packets at KB/s. After MinMax scaling with CIC-IDS2017 training ranges, all Modbus features collapse to near-zero — indistinguishable from quiet normal traffic. The Modbus anomaly detector bridges this domain gap by applying protocol-specific thresholds to the raw (unscaled) flow features, demonstrating that effective ML-based IDS deployment requires domain adaptation when the target environment differs from the training data.
 
@@ -410,15 +441,16 @@ The CPS water treatment simulation experienced a seven-stage automated attack ca
 - No permanent physical process damage — simulation fail-safes and attack time-bounding prevented catastrophic states
 
 **Detection Coverage:**
-- All 7 attacks detected by at least one layer (ML flow classification detected all 7; write-rate detected 3; flood detection detected 2)
+- All 7 attacks detected by multiple layers (ML flow classification detected all 7; CPS physics detected 6; write-rate detected 3; flood detection detected 2)
+- The CPS physics engine provides the deepest CPS-specific detection: pump oscillation catches Stuxnet-style attacks, sensor spoofing detection flags writes to read-only registers, and valve bounds checking rejects physically impossible commands
 - Zero ML false positives during 20-second baseline period
-- Attacks 1–3 operated below the write-rate threshold but were caught by ML classification as R2L
-- CNN+LSTM neural network requires retraining on Modbus-specific data to replace the threshold-based anomaly detector
+- Attacks 1–3 operated below the write-rate threshold but were caught by both ML classification (R2L) and CPS physics (unsafe commands, oscillation)
+- CNN+LSTM neural network requires retraining on ICS-specific datasets (SWaT, Mississippi State SCADA) to replace the threshold-based anomaly detector
 
 **Recommendations:**
 1. Deploy Modbus application-layer firewall enforcing function code whitelisting (permit only FC 0x03 reads from SCADA, block unsolicited writes from unknown sources)
 2. Implement Modbus/TCP authentication extensions or TLS wrapping to prevent unauthenticated command injection
-3. Retrain the CNN+LSTM model on Modbus-specific traffic datasets to eliminate the domain adaptation layer
+3. Retrain the CNN+LSTM model on ICS-specific datasets (SWaT, Mississippi State SCADA Gas Pipeline) to eliminate the domain adaptation layer and enable ML-native Modbus attack classification
 4. Deploy network segmentation isolating PLC networks from general-purpose hosts
 5. Configure per-source write-rate thresholds tuned to expected SCADA polling intervals
 6. Establish IDS alert log retention and automated correlation with SIEM for real-time triage
@@ -454,9 +486,9 @@ Address OWASP Top 10 vulnerabilities relevant to CPS web interfaces:
 
 ## Conclusion
 
-This report presented the design and live evaluation of an AI/ML-driven Intrusion Detection System tailored for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines a 20-rule signature engine with rate-based anomaly detection and a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017.
+This report presented the design and live evaluation of an AI/ML-driven Intrusion Detection System tailored explicitly for Cyber-Physical Systems security. The choice of IDS over IPS reflects the primacy of availability in CPS environments, where inline packet dropping could disrupt safety-critical control loops. The implemented system combines a 20-rule signature engine, Modbus rate-based anomaly detection, a CPS physics-aware detection engine encoding physical process constraints, and a multi-model machine learning ensemble (Random Forest, CNN+LSTM, Isolation Forest), achieving 99.73% accuracy on modern traffic (CIC-IDS2017) and 97.8% cross-era generalisation across three datasets spanning 1999–2017. The physics engine — which validates Modbus commands against plant-specific constraints (register bounds, pump oscillation frequency, valve/pump state consistency, sensor spoofing, rate-of-change limits) — represents the system's most distinctly CPS-tailored capability, detecting process-level attacks that generic network IDS cannot identify.
 
-The forensic investigation — conducted against a MiniCPS water treatment simulation with seven automated Modbus TCP attacks — validated the IDS's detection capabilities using NIST SP 800-86 methodology. The investigation captured 38,592 packets and 51,650 IDS alerts across three detection layers: ML-based flow classification detected all 7 attacks (DoS at 99% confidence, R2L at 70%, Probe at 65%), Modbus flood detection identified read-flood attacks at up to 10,500 packets/sec, and write-rate anomaly detection flagged manipulation attacks exceeding 2.0 writes/sec. The iterative investigation process — discovering the CNN+LSTM's domain mismatch (99.83% offline but 0% on Modbus traffic), then implementing a Modbus-aware anomaly detector as a domain adaptation layer — demonstrates a critical lesson for AI-driven security: model accuracy is only meaningful within the training domain, and effective deployment requires protocol-specific adaptation matched to the target environment.
+The forensic investigation — conducted against a MiniCPS water treatment simulation with seven automated Modbus TCP attacks — validated the IDS's detection capabilities using NIST SP 800-86 methodology. The investigation captured 38,592 packets and 51,650 IDS alerts across four detection layers: ML-based flow classification detected all 7 attacks (DoS at 99% confidence, R2L at 70%, Probe at 65%), the CPS physics engine detected 6 attacks through process constraint violations (pump oscillation, sensor spoofing, valve bounds, state inconsistency), Modbus flood detection identified read-flood attacks at up to 10,500 packets/sec, and write-rate anomaly detection flagged manipulation attacks exceeding 2.0 writes/sec. The iterative investigation process — discovering the CNN+LSTM's domain mismatch (99.83% offline but 0% on Modbus traffic), then implementing both a Modbus-aware anomaly detector and a physics-based process state validator — demonstrates a critical lesson for AI-driven CPS security: model accuracy is only meaningful within the training domain, and effective deployment requires both protocol-specific adaptation and physical process awareness matched to the target environment. Future work should prioritise training on ICS-specific datasets (SWaT, Mississippi State SCADA) to enable ML-native detection of industrial protocol attacks without reliance on threshold-based domain adaptation layers.
 
 ---
 
@@ -485,6 +517,12 @@ The forensic investigation — conducted against a MiniCPS water treatment simul
 11. Volatility Foundation. (2023). *Volatility 3 Framework*. https://www.volatilityfoundation.org/
 
 12. Wireshark Foundation. (2023). *Wireshark User's Guide*. https://www.wireshark.org/docs/
+
+13. Goh, J., Adepu, S., Junejo, K. N., & Mathur, A. (2017). A Dataset to Support Research in the Design of Secure Water Treatment Systems. *CRITIS*.
+
+14. Morris, T., & Gao, W. (2014). Industrial Control System Traffic Data Sets for Intrusion Detection Research. *CRITIS*.
+
+15. IEC. (2018). *IEC 62443: Industrial communication networks — Network and system security*.
 
 ---
 

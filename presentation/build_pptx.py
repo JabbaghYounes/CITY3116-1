@@ -193,13 +193,13 @@ add_bullet_list(s, 6.5, 1.7, 6.3, 5.0, [
 s = add_blank_slide()
 add_title(s, "Multi-Layer IDS Design", "Implemented in Rust (6-crate workspace) for memory safety and performance")
 
-add_stat_card(s, 1.0, 2.0, "20", "Rule Engine Rules\nSYN flood, port scan,\nModbus abuse, injection", BLUE)
-add_stat_card(s, 4.0, 2.0, "2", "Modbus Analysers\nWrite-rate anomaly\nRead flood detection", AMBER)
-add_stat_card(s, 7.0, 2.0, "3", "ML Models\nRandom Forest, CNN+LSTM\nIsolation Forest", GREEN)
-add_stat_card(s, 10.0, 2.0, "78", "Flow Features\nExtracted per flow for\nCNN+LSTM inference", ACCENT)
+add_stat_card(s, 0.5, 2.0, "20", "Rule Engine Rules\nSYN flood, port scan,\nModbus abuse, injection", BLUE)
+add_stat_card(s, 3.2, 2.0, "2", "Modbus Analysers\nWrite-rate anomaly\nRead flood detection", AMBER)
+add_stat_card(s, 5.9, 2.0, "6", "CPS Physics Checks\nRegister bounds, pump\noscillation, spoofing", ACCENT)
+add_stat_card(s, 8.6, 2.0, "3", "ML Models\nRandom Forest, CNN+LSTM\nIsolation Forest", GREEN)
 
 add_textbox(s, 0.5, 4.2, 12.3, 0.5,
-            "Detection Pipeline:   Rule Engine  \u2192  Modbus Analysis  \u2192  CNN+LSTM Inference",
+            "Detection Pipeline:   Rule Engine  \u2192  Modbus Analysis  \u2192  CPS Physics  \u2192  CNN+LSTM Inference",
             font_size=20, bold=True, color=DARK, alignment=PP_ALIGN.CENTER)
 
 add_bullet_list(s, 0.8, 5.0, 5.8, 2.3, [
@@ -293,12 +293,15 @@ add_bullet_list(s, 0.5, 2.1, 6.0, 2.5, [
     "\u2022  Time-windowed inference every 10s on active flows",
 ], font_size=15)
 
-add_textbox(s, 0.5, 4.3, 6.0, 0.4, "Modbus-Specific Detection", font_size=20, bold=True)
-add_bullet_list(s, 0.5, 4.8, 6.0, 1.8, [
+add_textbox(s, 0.5, 4.3, 6.0, 0.4, "CPS-Specific Detection", font_size=20, bold=True)
+add_bullet_list(s, 0.5, 4.8, 6.0, 2.2, [
     "\u2022  Write-rate anomaly: >2.0 writes/sec triggers alert",
     "\u2022  Read flood detection: >50 reads/sec flagged as DoS",
-    "\u2022  Domain-adapted classifier for Modbus flow patterns",
-], font_size=15)
+    "\u2022  Physics engine: register bounds (valve 0\u2013180\u00b0, tank 0\u20131023)",
+    "\u2022  Pump oscillation: detects Stuxnet-style rapid toggling (<5s)",
+    "\u2022  Sensor spoofing: flags direct writes to read-only registers",
+    "\u2022  State consistency: valve/pump mismatch, unsafe commands",
+], font_size=14)
 
 add_stat_card(s, 7.5, 2.0, "~1ms", "ML Inference\nLatency per prediction", GREEN)
 add_stat_card(s, 10.3, 2.0, "10s", "Inference Window\nActive flow analysis", BLUE)
