@@ -253,29 +253,31 @@ The implemented ML-based ensemble demonstrates:
 
 ### 2.5 Advantages, Limitations, and Challenges
 
-**Advantages of AI/ML in CPS Security:**
+The following insights are drawn directly from implementing and deploying the IDS against the water treatment simulation.
 
-1. **Adaptive Detection:** ML models can identify previously unseen attack patterns by learning normal behaviour characteristics.
+**Advantages of AI/ML in CPS Security (demonstrated):**
 
-2. **Reduced Manual Effort:** Automatic feature learning reduces dependency on manual rule creation.
+1. **Detection Beyond Rules:** The ML classifier detected all 7 attacks including Command Injection and Pump Oscillation (attacks 1–2), which operated below the write-rate threshold (< 2.0 writes/sec) and matched no signature rule. The rule engine and rate detectors missed these; only ML flow classification (R2L at 70% confidence) and the CPS physics engine caught them. This demonstrates ML's ability to detect attacks that evade traditional threshold-based and signature-based approaches.
 
-3. **Contextual Analysis:** Deep learning models capture complex relationships and temporal patterns in CPS traffic.
+2. **Cross-Era Generalisation:** Model D (276 features, combined dataset) achieved 97.82% accuracy across datasets spanning 1999–2017, demonstrating that ML can learn attack patterns that generalise across network eras. The ensemble's R2L recall improved from 0.75 (RF alone) to 0.82 (RF+IForest), showing that combining supervised and unsupervised models improves minority class detection — critical for CPS where rare U2R/R2L attacks are the most dangerous.
 
-4. **Scalability:** Once trained, models can process high-volume traffic with consistent performance.
+3. **Real-Time Feasibility:** ONNX Runtime inference achieved ~1ms per prediction, well within the 200ms PLC scan cycle. The Python subprocess architecture (JSON Lines over stdin/stdout) added negligible overhead while avoiding native ONNX build dependencies. Time-windowed inference every 10 seconds on active flows provided detection during attacks rather than only after flow expiry, proving that deep learning inference is compatible with CPS real-time constraints.
 
-**Limitations and Challenges:**
+4. **Unsupervised Anomaly Baseline:** The Isolation Forest provided ~80% accuracy across all datasets without any labelled training data, establishing a zero-day detection capability. In a CPS environment where novel attack types emerge faster than labelled datasets can be produced, this unsupervised baseline is essential.
 
-1. **Training Data Requirements:** Effective models require large, labelled datasets that may not be available for specific CPS environments.
+**Limitations and Challenges (discovered):**
 
-2. **Adversarial Attacks:** ML models are susceptible to adversarial examples crafted to evade detection.
+1. **Domain Gap — The Critical Failure Mode:** The CNN+LSTM achieved 99.83% accuracy on CIC-IDS2017 test data but classified 100% of live Modbus traffic as Normal. CIC-IDS2017 DDoS attacks produce 50,000+ packets at GB/s; Modbus floods produce ~500 packets at KB/s. After MinMax scaling with CIC-IDS2017 training ranges, all Modbus features collapsed to near-zero — indistinguishable from silence. This is the single most important finding: **offline accuracy does not predict deployment effectiveness when the training and target domains differ**. ICS-specific datasets (SWaT, Mississippi State SCADA) would have avoided this entirely.
 
-3. **Interpretability:** Deep learning models operate as "black boxes," making it difficult to explain detection decisions for forensic purposes.
+2. **ML Cannot Replace Process Knowledge:** The CPS physics engine detected attacks that no ML model could: valve position 195° exceeding the servo's 180° physical maximum, pump toggling faster than mechanical safe limits, and direct writes to sensor registers that SCADA should only read. These require domain expertise about the specific plant — knowledge that cannot be learned from generic network traffic datasets. Effective CPS security requires ML *supplemented by* physics-based validation, not ML alone.
 
-4. **Concept Drift:** CPS environments evolve over time, requiring periodic model retraining to maintain accuracy.
+3. **False Positives in CPS Context:** The generic rule engine generated 43,207 false positives (84% of all alerts) because rules designed for internet traffic (SYN flood, port scan) fire continuously on localhost simulation traffic. In CPS, false positive fatigue is dangerous — operators who learn to ignore alerts will miss real attacks. The ML layer produced zero false positives during the baseline period, but the 70% confidence on R2L classifications means 30% uncertainty, which in a safety-critical environment would require human validation before any automated response.
 
-5. **Real-time Constraints:** Complex models may introduce latency incompatible with time-critical CPS operations.
+4. **Interpretability for Forensics:** When the ML classifier flagged a flow as R2L, the alert contained only "R2L detected (confidence: 70%, 45 packets in flow)." The CPS physics engine, by contrast, produced "Pump forced ON while tank at 890 (>869 overflow threshold)" — immediately actionable for an operator. Deep learning's black-box nature limits its forensic utility; physics-based alerts provide the causal explanation needed for incident response.
 
-6. **False Positives in Operational Environments:** Anomaly detection may flag legitimate but infrequent operations as suspicious, and in CPS the cost of a false positive (operator fatigue, ignored alerts) is higher than in IT networks.
+5. **Real-Time Constraints vs Detection Depth:** The 10-second time-windowed inference scan introduces a detection delay — attacks shorter than 10 seconds may complete before the ML scan triggers. Reducing this window increases CPU load from ONNX inference. The physics engine has no such delay (it evaluates every Modbus write immediately), demonstrating that lightweight domain-specific checks can complement ML's deeper but slower analysis.
+
+6. **Concept Drift in CPS:** CPS environments change slowly (firmware updates, process parameter tuning, new equipment), but when they change, the ML model and physics constraints both require updating. The physics engine's constants (tank range, valve range, pump thresholds) are hardcoded to this specific plant — deploying to a different plant requires re-encoding its physical constraints, a form of domain-specific concept drift that generic ML retraining cannot address.
 
 ---
 
