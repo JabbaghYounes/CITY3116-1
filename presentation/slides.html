@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPS-IDS: AI/ML-Driven Intrusion Detection for Cyber-Physical Systems</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+<style>
+  :root {
+    --r-heading-color: #1a1a2e;
+    --r-main-color: #2d2d2d;
+    --r-link-color: #16213e;
+  }
+  .reveal h1, .reveal h2, .reveal h3 { text-transform: none; }
+  .reveal h1 { font-size: 2.0em; }
+  .reveal h2 { font-size: 1.5em; }
+  .reveal h3 { font-size: 1.1em; color: #555; }
+  .reveal { font-size: 32px; }
+  .reveal p, .reveal li { font-size: 0.85em; line-height: 1.5; }
+  .reveal table { font-size: 0.7em; margin: 0.5em auto; }
+  .reveal table th { background: #1a1a2e; color: white; padding: 0.4em 0.8em; }
+  .reveal table td { padding: 0.3em 0.8em; border-bottom: 1px solid #ddd; }
+  .reveal table tr:nth-child(even) { background: #f5f5f5; }
+  .reveal .highlight { color: #e94560; font-weight: bold; }
+  .reveal .dim { color: #888; font-size: 0.75em; }
+  .reveal code { background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.8em; }
+  .reveal .two-col { display: flex; gap: 2em; align-items: flex-start; }
+  .reveal .two-col > div { flex: 1; }
+  .reveal .architecture-box {
+    background: #f8f9fa; border: 2px solid #dee2e6; border-radius: 8px;
+    padding: 0.8em; font-family: monospace; font-size: 0.65em; line-height: 1.6;
+    text-align: left; white-space: pre;
+  }
+  .reveal .stat-grid { display: flex; gap: 1em; justify-content: center; flex-wrap: wrap; margin-top: 0.5em; }
+  .reveal .stat-card {
+    background: #f8f9fa; border-radius: 8px; padding: 0.6em 1.2em;
+    text-align: center; min-width: 140px; border-left: 4px solid #1a1a2e;
+  }
+  .reveal .stat-card .num { font-size: 1.6em; font-weight: bold; color: #1a1a2e; }
+  .reveal .stat-card .label { font-size: 0.6em; color: #666; }
+  .reveal .alert-tag {
+    display: inline-block; padding: 0.15em 0.5em; border-radius: 4px;
+    font-size: 0.7em; font-weight: bold; margin: 0.1em;
+  }
+  .reveal .tag-rule { background: #dbeafe; color: #1e40af; }
+  .reveal .tag-modbus { background: #fef3c7; color: #92400e; }
+  .reveal .tag-ml { background: #d1fae5; color: #065f46; }
+  .slide-number { font-size: 14px !important; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- SLIDE 1: Title -->
+<section>
+  <h1>CPS-IDS</h1>
+  <h3>AI/ML-Driven Intrusion Detection<br>for Cyber-Physical Systems</h3>
+  <br>
+  <p class="dim">CITY3116 &mdash; Advanced Computer Forensics</p>
+  <p class="dim">2025&ndash;26</p>
+</section>
+
+<!-- SLIDE 2: CPS Architecture -->
+<section>
+  <h2>CPS Testbed Architecture</h2>
+  <div class="two-col">
+    <div>
+      <div class="architecture-box">Level 3 &mdash; SCADA PC / IDS / Attacker
+  &boxv; Ethernet (Modbus TCP)
+Level 2 &mdash; TP-Link LS1005G Switch
+  &boxv;
+  &boxvr; PLC 1 (Mega + W5500)
+  &boxv;   &boxv; RS-485 (Modbus RTU)
+  &boxur; PLC 2 (Uno + MAX485)
+  &boxv;
+Level 1 &mdash; Control Logic
+  &boxv;
+Level 0 &mdash; Sensors &amp; Actuators</div>
+    </div>
+    <div>
+      <ul>
+        <li><strong>Physical plant:</strong> Arduino water treatment system</li>
+        <li><strong>PLC 1:</strong> Modbus TCP server, pump/valve control, RFID auth</li>
+        <li><strong>PLC 2:</strong> Modbus RTU slave, 5 sensors (ultrasonic, temp, sound, motion, water)</li>
+        <li><strong>Software twin:</strong> MiniCPS/pymodbus simulation with identical register map</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 3: IDS Design -->
+<section>
+  <h2>Multi-Layer IDS Design</h2>
+  <p>Implemented in <strong>Rust</strong> (6-crate workspace) for memory safety and performance</p>
+  <br>
+  <div class="stat-grid">
+    <div class="stat-card" style="border-left-color: #1e40af;">
+      <div class="num">20</div>
+      <div class="label">Rule Engine Rules</div>
+      <div class="dim">SYN flood, port scan,<br>Modbus abuse, shell injection</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #92400e;">
+      <div class="num">2</div>
+      <div class="label">Modbus Analysers</div>
+      <div class="dim">Write-rate anomaly<br>Read flood detection</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #065f46;">
+      <div class="num">3</div>
+      <div class="label">ML Models</div>
+      <div class="dim">Random Forest, CNN+LSTM,<br>Isolation Forest</div>
+    </div>
+  </div>
+  <br>
+  <p class="dim">Detection pipeline: <span class="alert-tag tag-rule">Rule Engine</span> &rarr; <span class="alert-tag tag-modbus">Modbus Analysis</span> &rarr; <span class="alert-tag tag-ml">CNN+LSTM Inference</span></p>
+</section>
+
+<!-- SLIDE 4: ML Models -->
+<section>
+  <h2>AI/ML Model Architecture</h2>
+  <div class="two-col">
+    <div>
+      <h3>CNN+LSTM (~297K params)</h3>
+      <ul>
+        <li>Conv1d &rarr; ReLU &rarr; BatchNorm &rarr; Conv1d</li>
+        <li>LSTM (2 layers, 128 hidden)</li>
+        <li>FC (128 &rarr; 64 &rarr; 5 classes)</li>
+        <li>Dropout 0.3, early stopping</li>
+        <li>PyTorch &rarr; ONNX export for live inference</li>
+      </ul>
+      <h3>Ensemble (RF + Isolation Forest)</h3>
+      <ul>
+        <li>RF: 100 trees, max depth 20</li>
+        <li>IForest: unsupervised anomaly detection</li>
+        <li>Hard voting (0.7 RF / 0.3 IForest)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Unified 5-Class Scheme</h3>
+      <table>
+        <tr><th>Class</th><th>Description</th></tr>
+        <tr><td>Normal</td><td>Benign traffic</td></tr>
+        <tr><td>DoS</td><td>Denial of Service</td></tr>
+        <tr><td>Probe</td><td>Reconnaissance</td></tr>
+        <tr><td>R2L</td><td>Remote-to-Local</td></tr>
+        <tr><td>U2R</td><td>User-to-Root</td></tr>
+      </table>
+      <br>
+      <h3>3 Public Datasets</h3>
+      <ul>
+        <li>NSL-KDD (1999) &mdash; 122 features</li>
+        <li>CIC-IDS2017 (2017) &mdash; 78 features</li>
+        <li>UNSW-NB15 (2015) &mdash; 76 features</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 5: Training Results -->
+<section>
+  <h2>Training Results</h2>
+  <table>
+    <tr>
+      <th>Model</th><th>Dataset</th><th>Features</th>
+      <th>Random Forest</th><th>CNN+LSTM</th><th>Isolation Forest</th><th>RF+IForest</th><th>FPR</th>
+    </tr>
+    <tr>
+      <td>A</td><td>NSL-KDD</td><td>122</td>
+      <td>67.26%*</td><td>65.94%*</td><td>77.24%</td><td>67.26%*</td><td>0.0301</td>
+    </tr>
+    <tr>
+      <td>B</td><td>CIC-IDS2017</td><td>78</td>
+      <td>99.73%</td><td class="highlight">99.83%</td><td>81.37%</td><td>99.73%</td><td class="highlight">0.0006</td>
+    </tr>
+    <tr>
+      <td>C</td><td>UNSW-NB15</td><td>76</td>
+      <td>93.90%</td><td>92.95%</td><td>82.50%</td><td>93.84%</td><td>0.0251</td>
+    </tr>
+    <tr>
+      <td>D</td><td>Combined</td><td>276</td>
+      <td>97.80%</td><td>97.67%</td><td>80.20%</td><td class="highlight">97.82%</td><td>0.0043</td>
+    </tr>
+  </table>
+  <p class="dim">*Model A limited by NSL-KDD binary-only test labels (Probe/R2L/U2R collapsed)</p>
+  <br>
+  <div class="stat-grid">
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">99.83%</div>
+      <div class="label">Best Accuracy<br>(CNN+LSTM, Model B)</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">0.06%</div>
+      <div class="label">False Positive Rate<br>(Model B)</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">97.82%</div>
+      <div class="label">Cross-Era Generalisation<br>(Ensemble, Model D)</div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 6: Live Monitor -->
+<section>
+  <h2>Live IDS Monitor</h2>
+  <div class="two-col">
+    <div>
+      <h3>Architecture</h3>
+      <ul>
+        <li>Rust binary captures packets via <code>pnet</code></li>
+        <li>Bidirectional flow tracking with configurable timeout</li>
+        <li>Extracts 78 CIC-IDS2017 flow features per flow</li>
+        <li>Python subprocess runs ONNX model (~1ms/prediction)</li>
+        <li>JSON Lines IPC over stdin/stdout</li>
+      </ul>
+      <h3>Modbus-Specific Detection</h3>
+      <ul>
+        <li>Write-rate anomaly (&gt;2.0 writes/sec)</li>
+        <li>Read flood detection (&gt;50 reads/sec)</li>
+        <li>Domain-adapted classifier for Modbus flows</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Output</h3>
+      <ul>
+        <li>Structured JSON alerts (<code>alerts.jsonl</code>)</li>
+        <li>Severity: Low / Medium / High / Critical</li>
+        <li>Per-alert: category, confidence, model source, 5-tuple</li>
+      </ul>
+      <h3>Performance</h3>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="num">~1ms</div>
+          <div class="label">ML inference latency</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">10s</div>
+          <div class="label">Windowed inference cycle</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 7: Attack Scenario -->
+<section>
+  <h2>Forensic Investigation: Attack Scenario</h2>
+  <p>7 distinct attacks executed against the CPS simulation via automated pipeline</p>
+  <br>
+  <table>
+    <tr><th>#</th><th>Attack</th><th>Modbus FC</th><th>Duration</th><th>Description</th></tr>
+    <tr><td>1</td><td>Command Injection</td><td>FC 0x05</td><td>45s</td><td>Forces pump ON/OFF every 5s</td></tr>
+    <tr><td>2</td><td>Pump Oscillation</td><td>FC 0x05</td><td>45s</td><td>Rapid toggle every 2s (Stuxnet-style)</td></tr>
+    <tr><td>3</td><td>Valve Manipulation</td><td>FC 0x06</td><td>45s</td><td>Random valve positions (0&ndash;180&deg;)</td></tr>
+    <tr><td>4</td><td>Replay Attack</td><td>FC 0x05</td><td>45s</td><td>Replays recorded ON/OFF sequence</td></tr>
+    <tr><td>5</td><td>Sensor Spoofing</td><td>FC 0x06</td><td>45s</td><td>Fake tank levels (0&ndash;100)</td></tr>
+    <tr><td>6</td><td>Modbus Flood (DoS)</td><td>FC 0x03</td><td>20s</td><td>100&times; reads per iteration</td></tr>
+    <tr><td>7</td><td>Multi-Stage</td><td>Mixed</td><td>30s</td><td>Recon &rarr; manipulation &rarr; flood</td></tr>
+  </table>
+  <br>
+  <p class="dim">Evidence captured: full-session pcap (tcpdump) + IDS alerts (JSONL) + attack timestamps (JSON manifest)</p>
+</section>
+
+<!-- SLIDE 8: Investigation Results -->
+<section>
+  <h2>Investigation Results</h2>
+  <div class="stat-grid">
+    <div class="stat-card" style="border-left-color: #065f46;">
+      <div class="num">17</div>
+      <div class="label">ML Alerts<br>across all 7 attacks</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #92400e;">
+      <div class="num">300</div>
+      <div class="label">Write-Rate Alerts<br>Modbus anomaly detection</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #1e40af;">
+      <div class="num">8,126</div>
+      <div class="label">Flood Detection Alerts<br>DoS &amp; multi-stage attacks</div>
+    </div>
+  </div>
+  <br>
+  <div class="two-col">
+    <div>
+      <h3>Detection Coverage</h3>
+      <table>
+        <tr><th>Attack</th><th>Rule</th><th>Modbus</th><th>ML</th></tr>
+        <tr><td>Command Injection</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Pump Oscillation</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Valve Manipulation</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Replay Attack</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Sensor Spoofing</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Modbus Flood</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Multi-Stage</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Forensic Tools Used</h3>
+      <ul>
+        <li><strong>Wireshark</strong> &mdash; pcap analysis, Modbus filter</li>
+        <li><strong>tcpdump</strong> &mdash; live packet capture</li>
+        <li><strong>Custom IDS</strong> &mdash; real-time alert generation</li>
+        <li><strong>Attack manifest</strong> &mdash; timestamp correlation</li>
+      </ul>
+      <h3>Key Finding</h3>
+      <p>Multi-layer detection achieves <strong>100% attack coverage</strong> &mdash; every attack type detected by all 3 layers</p>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 9: Evaluation & Recommendations -->
+<section>
+  <h2>Evaluation &amp; Recommendations</h2>
+  <div class="two-col">
+    <div>
+      <h3>Strengths</h3>
+      <ul>
+        <li>CNN+LSTM <span class="highlight">99.83%</span> accuracy with 0.06% FPR</li>
+        <li>Multi-layer defence-in-depth (rules + rate + ML)</li>
+        <li>Cross-dataset generalisation at 97.8% (Model D)</li>
+        <li>Real-time inference &lt;1ms via ONNX Runtime</li>
+        <li>Ensemble improves minority class detection (R2L recall +7%)</li>
+      </ul>
+      <h3>Limitations</h3>
+      <ul>
+        <li>U2R class remains hardest (extremely rare samples)</li>
+        <li>Model A degraded by NSL-KDD binary test labels</li>
+        <li>Domain gap: training data ≠ live Modbus traffic</li>
+        <li>Rule engine generates false positives on localhost</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Recommendations</h3>
+      <ul>
+        <li><strong>Domain adaptation:</strong> fine-tune on captured Modbus traffic</li>
+        <li><strong>Federated learning:</strong> train across CPS sites without sharing data</li>
+        <li><strong>Adaptive thresholds:</strong> tune rule engine per deployment</li>
+        <li><strong>SIEM integration:</strong> CEF/syslog export for SOC workflows</li>
+      </ul>
+      <h3>Standards Alignment</h3>
+      <ul>
+        <li><strong>ISO 27001:</strong> A.12.4 logging, A.16 incident management</li>
+        <li><strong>IEC 62443:</strong> defence-in-depth for industrial systems</li>
+        <li><strong>NIST CSF:</strong> Detect &amp; Respond functions</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SLIDE 10: Summary -->
+<section>
+  <h2>Summary</h2>
+  <br>
+  <div class="stat-grid">
+    <div class="stat-card" style="border-left-color: #1a1a2e;">
+      <div class="num">6</div>
+      <div class="label">Rust Crates</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #1a1a2e;">
+      <div class="num">4</div>
+      <div class="label">Model Variants</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">99.83%</div>
+      <div class="label">Best Accuracy</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #065f46;">
+      <div class="num">7/7</div>
+      <div class="label">Attacks Detected</div>
+    </div>
+  </div>
+  <br>
+  <ul>
+    <li>Built a complete CPS testbed (Arduino hardware + MiniCPS simulation)</li>
+    <li>Trained CNN+LSTM, Random Forest, and Isolation Forest on 3 public datasets</li>
+    <li>Deployed live IDS monitor with real-time ONNX inference</li>
+    <li>Conducted forensic investigation detecting all 7 attack types across 3 detection layers</li>
+    <li>Multi-layer approach compensates for individual model weaknesses</li>
+  </ul>
+  <br>
+  <h3>Thank you &mdash; Questions?</h3>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: true,
+  transition: 'slide',
+  width: 1280,
+  height: 720,
+  margin: 0.08,
+  center: true,
+});
+</script>
+</body>
+</html>

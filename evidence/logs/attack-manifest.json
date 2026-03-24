@@ -1,0 +1,65 @@
+{
+  "investigation_start": "2026-03-23T17:12:44",
+  "baseline_seconds": 20,
+  "gap_seconds": 15,
+  "attacks": [
+    {
+      "name": "command_injection",
+      "label": "Command Injection",
+      "description": "Forces pump ON/OFF every 5s via Write Coil (FC 0x05)",
+      "start_time": "2026-03-23T17:12:44",
+      "end_time": "2026-03-23T17:13:30",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "pump_oscillation",
+      "label": "Pump Oscillation",
+      "description": "Rapid pump toggle every 2s (Stuxnet-style)",
+      "start_time": "2026-03-23T17:13:45",
+      "end_time": "2026-03-23T17:14:30",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "valve_manipulation",
+      "label": "Valve Manipulation",
+      "description": "Random valve positions (0-180) every 3s via Write Register (FC 0x06)",
+      "start_time": "2026-03-23T17:14:45",
+      "end_time": "2026-03-23T17:15:30",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "replay_attack",
+      "label": "Replay Attack",
+      "description": "Replays fixed 4-command ON/OFF sequence every 1s",
+      "start_time": "2026-03-23T17:15:45",
+      "end_time": "2026-03-23T17:16:30",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "sensor_spoofing",
+      "label": "Sensor Spoofing",
+      "description": "Writes fake tank levels (0-100) every 2s via Write Register (FC 0x06)",
+      "start_time": "2026-03-23T17:16:45",
+      "end_time": "2026-03-23T17:17:31",
+      "duration_seconds": 45.2
+    },
+    {
+      "name": "modbus_flood",
+      "label": "Modbus Flood (DoS)",
+      "description": "100x Read Holding Registers (FC 0x03) in tight loop",
+      "start_time": "2026-03-23T17:17:46",
+      "end_time": "2026-03-23T17:18:06",
+      "duration_seconds": 20.2
+    },
+    {
+      "name": "multi_stage",
+      "label": "Multi-Stage Attack",
+      "description": "3-phase: recon (10s) -> manipulation (20s) -> flood (~10s)",
+      "start_time": "2026-03-23T17:18:21",
+      "end_time": "2026-03-23T17:18:52",
+      "duration_seconds": 30.6
+    }
+  ],
+  "investigation_end": "2026-03-23T17:18:52",
+  "total_attacks": 7
+}

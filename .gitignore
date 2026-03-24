@@ -37,5 +37,11 @@ plant/simulation/*.log
 plant/dashboard/__pycache__/
 plant/__pycache__/
 
+# Evidence (large pcaps and alert logs)
+evidence/pcaps/
+evidence/logs/alerts.jsonl
+evidence/run-*/pcaps/
+evidence/run-*/logs/alerts.jsonl
+
 # OS files
 .DS_Store
