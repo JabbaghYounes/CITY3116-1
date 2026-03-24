@@ -251,7 +251,7 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
 <!-- SLIDE 7: Attack Scenario -->
 <section>
   <h2>Forensic Investigation: Attack Scenario</h2>
-  <p>7 distinct attacks executed against the CPS simulation via automated pipeline</p>
+  <p>8 attacks executed against the CPS simulation via automated pipeline (incl. Stuxnet MitM)</p>
   <br>
   <table>
     <tr><th>#</th><th>Attack</th><th>Modbus FC</th><th>Duration</th><th>Description</th></tr>
@@ -262,9 +262,10 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
     <tr><td>5</td><td>Sensor Spoofing</td><td>FC 0x06</td><td>45s</td><td>Fake tank levels (0&ndash;100)</td></tr>
     <tr><td>6</td><td>Modbus Flood (DoS)</td><td>FC 0x03</td><td>20s</td><td>100&times; reads per iteration</td></tr>
     <tr><td>7</td><td>Multi-Stage</td><td>Mixed</td><td>30s</td><td>Recon &rarr; manipulation &rarr; flood</td></tr>
+    <tr><td>8</td><td>Stuxnet Rootkit (MitM)</td><td>Mixed</td><td>60s</td><td>Intermittent actuator manipulation + sensor falsification</td></tr>
   </table>
   <br>
-  <p class="dim">Evidence captured: full-session pcap (tcpdump) + IDS alerts (JSONL) + attack timestamps (JSON manifest)</p>
+  <p class="dim">Evidence: pcap (tcpdump) + IDS alerts (JSONL) + attack manifest (JSON) + system artifacts (processes, connections, PLC registers)</p>
 </section>
 
 <!-- SLIDE 8: Investigation Results -->
@@ -273,14 +274,18 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
   <div class="stat-grid">
     <div class="stat-card" style="border-left-color: #065f46;">
       <div class="num">17</div>
-      <div class="label">ML Alerts<br>across all 7 attacks</div>
+      <div class="label">ML Alerts<br>across all 8 attacks</div>
+    </div>
+    <div class="stat-card" style="border-left-color: #e94560;">
+      <div class="num">264</div>
+      <div class="label">CPS Physics Alerts<br>oscillation, spoofing, mismatch</div>
     </div>
     <div class="stat-card" style="border-left-color: #92400e;">
-      <div class="num">300</div>
+      <div class="num">320</div>
       <div class="label">Write-Rate Alerts<br>Modbus anomaly detection</div>
     </div>
     <div class="stat-card" style="border-left-color: #1e40af;">
-      <div class="num">8,126</div>
+      <div class="num">13,109</div>
       <div class="label">Flood Detection Alerts<br>DoS &amp; multi-stage attacks</div>
     </div>
   </div>
@@ -289,14 +294,15 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
     <div>
       <h3>Detection Coverage</h3>
       <table>
-        <tr><th>Attack</th><th>Rule</th><th>Modbus</th><th>ML</th></tr>
-        <tr><td>Command Injection</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><th>Attack</th><th>Rule</th><th>CPS</th><th>ML</th></tr>
+        <tr><td>Command Injection</td><td>&check;</td><td></td><td>&check;</td></tr>
         <tr><td>Pump Oscillation</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
         <tr><td>Valve Manipulation</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
         <tr><td>Replay Attack</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
         <tr><td>Sensor Spoofing</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
-        <tr><td>Modbus Flood</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Modbus Flood</td><td>&check;</td><td></td><td>&check;</td></tr>
         <tr><td>Multi-Stage</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
+        <tr><td>Stuxnet Rootkit</td><td>&check;</td><td>&check;</td><td>&check;</td></tr>
       </table>
     </div>
     <div>
@@ -308,7 +314,7 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
         <li><strong>Attack manifest</strong> &mdash; timestamp correlation</li>
       </ul>
       <h3>Key Finding</h3>
-      <p>Multi-layer detection achieves <strong>100% attack coverage</strong> &mdash; every attack type detected by all 3 layers</p>
+      <p>Multi-layer detection achieves <strong>100% attack coverage</strong> &mdash; all 8 attacks detected across 4 layers</p>
     </div>
   </div>
 </section>
@@ -321,7 +327,7 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
       <h3>Strengths</h3>
       <ul>
         <li>CNN+LSTM <span class="highlight">99.83%</span> accuracy with 0.06% FPR</li>
-        <li>Multi-layer defence-in-depth (rules + rate + ML)</li>
+        <li>4-layer defence-in-depth (rules + rate + CPS physics + ML)</li>
         <li>Cross-dataset generalisation at 97.8% (Model D)</li>
         <li>Real-time inference &lt;1ms via ONNX Runtime</li>
         <li>Ensemble improves minority class detection (R2L recall +7%)</li>
@@ -370,7 +376,7 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
       <div class="label">Best Accuracy</div>
     </div>
     <div class="stat-card" style="border-left-color: #065f46;">
-      <div class="num">7/7</div>
+      <div class="num">8 / 8</div>
       <div class="label">Attacks Detected</div>
     </div>
   </div>
@@ -378,8 +384,8 @@ Level 0 &mdash; Sensors &amp; Actuators</div>
   <ul>
     <li>Built a complete CPS testbed (Arduino hardware + MiniCPS simulation)</li>
     <li>Trained CNN+LSTM, Random Forest, and Isolation Forest on 3 public datasets</li>
-    <li>Deployed live IDS monitor with real-time ONNX inference</li>
-    <li>Conducted forensic investigation detecting all 7 attack types across 3 detection layers</li>
+    <li>Deployed live IDS monitor with CPS physics engine and real-time ONNX inference</li>
+    <li>Conducted forensic investigation detecting all 8 attacks (incl. Stuxnet MitM) across 4 detection layers</li>
     <li>Multi-layer approach compensates for individual model weaknesses</li>
   </ul>
   <br>

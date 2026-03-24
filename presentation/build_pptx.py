@@ -319,9 +319,9 @@ add_bullet_list(s, 7.0, 4.8, 5.8, 2.0, [
 # ═══════════════════════════════════════════════════════════════════════════════
 s = add_blank_slide()
 add_title(s, "Forensic Investigation: Attack Scenario",
-          "7 attacks executed via automated pipeline (tmux + tcpdump + IDS + attack runner)")
+          "8 attacks executed via automated pipeline (incl. Stuxnet MitM rootkit)")
 
-add_table(s, 0.5, 1.7, 12.3, 4.0, [
+add_table(s, 0.5, 1.7, 12.3, 4.5, [
     ["#", "Attack", "Modbus FC", "Duration", "Description"],
     ["1", "Command Injection", "FC 0x05 (Write Coil)", "45s", "Forces pump ON/OFF every 5 seconds"],
     ["2", "Pump Oscillation", "FC 0x05 (Write Coil)", "45s", "Rapid pump toggle every 2s (Stuxnet-style)"],
@@ -330,11 +330,12 @@ add_table(s, 0.5, 1.7, 12.3, 4.0, [
     ["5", "Sensor Spoofing", "FC 0x06 (Write Reg)", "45s", "Writes fake tank levels (0\u2013100) every 2s"],
     ["6", "Modbus Flood (DoS)", "FC 0x03 (Read Reg)", "20s", "100\u00d7 read requests per iteration"],
     ["7", "Multi-Stage", "Mixed", "30s", "Recon (10s) \u2192 manipulation (20s) \u2192 flood"],
+    ["8", "Stuxnet Rootkit (MitM)", "Mixed", "60s", "Intermittent actuator manipulation + sensor falsification"],
 ], col_widths=[0.5, 2.2, 2.5, 1.1, 6.0])
 
-add_textbox(s, 0.5, 5.9, 12.3, 0.8,
-            "Evidence captured:  full-session.pcap (tcpdump)  |  alerts.jsonl (IDS)  |  attack-manifest.json (timestamps)",
-            font_size=15, color=GREY, alignment=PP_ALIGN.CENTER)
+add_textbox(s, 0.5, 6.4, 12.3, 0.8,
+            "Evidence:  pcap (tcpdump)  |  alerts.jsonl (IDS)  |  attack-manifest.json  |  system artifacts (processes, connections, PLC registers)",
+            font_size=14, color=GREY, alignment=PP_ALIGN.CENTER)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SLIDE 8: Investigation Results
@@ -342,29 +343,31 @@ add_textbox(s, 0.5, 5.9, 12.3, 0.8,
 s = add_blank_slide()
 add_title(s, "Investigation Results")
 
-add_stat_card(s, 0.8, 1.7, "17", "ML Alerts\nAcross all 7 attacks", GREEN)
-add_stat_card(s, 3.5, 1.7, "300", "Write-Rate Alerts\nModbus anomaly detection", AMBER)
-add_stat_card(s, 6.2, 1.7, "8,126", "Flood Detection\nDoS & multi-stage attacks", BLUE)
+add_stat_card(s, 0.5, 1.7, "17", "ML Alerts\nAcross all 8 attacks", GREEN)
+add_stat_card(s, 3.0, 1.7, "264", "CPS Physics Alerts\nOscillation, spoofing,\nmismatch", ACCENT)
+add_stat_card(s, 5.5, 1.7, "320", "Write-Rate Alerts\nModbus anomaly", AMBER)
+add_stat_card(s, 8.0, 1.7, "13,109", "Flood Detection\nDoS & multi-stage", BLUE)
 
-add_textbox(s, 9.5, 1.7, 3.3, 0.4, "Detection Coverage", font_size=18, bold=True)
-add_table(s, 9.5, 2.2, 3.3, 3.5, [
-    ["Attack", "Rule", "Modbus", "ML"],
-    ["Cmd Injection", "\u2713", "\u2713", "\u2713"],
-    ["Pump Oscillation", "\u2713", "\u2713", "\u2713"],
-    ["Valve Manip.", "\u2713", "\u2713", "\u2713"],
-    ["Replay", "\u2713", "\u2713", "\u2713"],
-    ["Sensor Spoof", "\u2713", "\u2713", "\u2713"],
-    ["Modbus Flood", "\u2713", "\u2713", "\u2713"],
-    ["Multi-Stage", "\u2713", "\u2713", "\u2713"],
-], col_widths=[1.3, 0.6, 0.8, 0.6])
+add_textbox(s, 10.8, 1.7, 2.2, 0.4, "Coverage", font_size=16, bold=True)
+add_table(s, 10.5, 2.2, 2.5, 3.8, [
+    ["Attack", "CPS", "ML"],
+    ["Cmd Inject", "", "\u2713"],
+    ["Oscillation", "\u2713", "\u2713"],
+    ["Valve Manip", "\u2713", "\u2713"],
+    ["Replay", "\u2713", "\u2713"],
+    ["Spoofing", "\u2713", "\u2713"],
+    ["Flood", "", "\u2713"],
+    ["Multi-Stage", "\u2713", "\u2713"],
+    ["Rootkit", "\u2713", "\u2713"],
+], col_widths=[1.1, 0.7, 0.7])
 
-add_textbox(s, 0.5, 3.7, 8.5, 0.4, "Forensic Tools & Evidence", font_size=20, bold=True)
-add_bullet_list(s, 0.5, 4.2, 8.5, 2.8, [
-    "\u2022  Wireshark: pcap analysis with Modbus TCP dissector (modbus.func_code filter)",
-    "\u2022  tcpdump: live packet capture on loopback port 5502 during attack sequence",
-    "\u2022  Custom IDS monitor: 3-layer real-time alert generation with JSON structured output",
-    "\u2022  Attack manifest: JSON timestamps for precise correlation of alerts to attack phases",
-    "\u2022  Key finding: multi-layer detection achieves 100% attack coverage \u2014 every attack type detected by all 3 layers",
+add_textbox(s, 0.5, 3.7, 10.0, 0.4, "Forensic Tools & Evidence", font_size=20, bold=True)
+add_bullet_list(s, 0.5, 4.2, 10.0, 2.8, [
+    "\u2022  Wireshark: Modbus TCP dissector, FC filters, I/O graphs, conversation stats (14 screenshots)",
+    "\u2022  tcpdump: live packet capture on loopback port 5502 (3.5 MB, 38,289 packets)",
+    "\u2022  Custom IDS: 4-layer real-time detection (rules + rate + CPS physics + CNN+LSTM)",
+    "\u2022  System artifacts: 19 PLC register snapshots, process lists, network connections",
+    "\u2022  100% attack coverage \u2014 all 8 attacks detected by ML; 6/8 by CPS physics engine",
 ], font_size=15)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -376,7 +379,7 @@ add_title(s, "Evaluation & Recommendations")
 add_textbox(s, 0.5, 1.6, 6.0, 0.4, "Strengths", font_size=20, bold=True, color=GREEN)
 add_bullet_list(s, 0.5, 2.1, 6.0, 2.0, [
     "\u2022  CNN+LSTM achieves 99.83% accuracy with 0.06% FPR",
-    "\u2022  Multi-layer defence-in-depth (rules + rate + ML)",
+    "\u2022  4-layer defence-in-depth (rules + rate + CPS physics + ML)",
     "\u2022  Cross-dataset generalisation at 97.8% (Model D)",
     "\u2022  Real-time inference <1ms via ONNX Runtime",
     "\u2022  Ensemble improves minority class recall (R2L +7%)",
@@ -415,13 +418,13 @@ add_title(s, "Summary")
 add_stat_card(s, 1.0, 1.7, "6", "Rust Crates", DARK)
 add_stat_card(s, 3.7, 1.7, "4", "Model Variants", DARK)
 add_stat_card(s, 6.4, 1.7, "99.83%", "Best Accuracy", ACCENT)
-add_stat_card(s, 9.1, 1.7, "7 / 7", "Attacks Detected", GREEN)
+add_stat_card(s, 9.1, 1.7, "8 / 8", "Attacks Detected", GREEN)
 
 add_bullet_list(s, 0.8, 3.8, 11.7, 2.8, [
     "\u2022  Built a complete CPS testbed (Arduino hardware + MiniCPS software simulation)",
     "\u2022  Trained CNN+LSTM, Random Forest, and Isolation Forest on 3 public IDS datasets",
-    "\u2022  Deployed live IDS monitor with real-time ONNX inference (~1ms per prediction)",
-    "\u2022  Conducted forensic investigation detecting all 7 attack types across 3 detection layers",
+    "\u2022  Deployed live IDS monitor with CPS physics engine and real-time ONNX inference (~1ms)",
+    "\u2022  Conducted forensic investigation detecting all 8 attacks (incl. Stuxnet MitM) across 4 layers",
     "\u2022  Multi-layer approach compensates for individual model weaknesses \u2014 100% attack coverage",
 ], font_size=18)
 
