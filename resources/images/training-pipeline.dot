@@ -1,0 +1,118 @@
+digraph training_pipeline {
+    rankdir=TB;
+    bgcolor="white";
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=10, style="filled,rounded", shape=box, penwidth=1.2];
+    edge [fontname="Helvetica", fontsize=9, penwidth=1.2, color="#555555"];
+    nodesep=0.5;
+    ranksep=0.55;
+    pad=0.4;
+
+    // Title
+    title [label="Training Pipeline", shape=plaintext, fillcolor=white,
+           fontsize=14, fontcolor="#1565C0"];
+
+    // Raw datasets
+    subgraph cluster_datasets {
+        label="Raw Datasets";
+        labeljust=c;
+        fontsize=9;
+        color="#90CAF9";
+        style="dashed,rounded";
+        margin=12;
+        bgcolor="#F5F9FF";
+
+        nsl [label="NSL-KDD\n(1999)\n122 features", fillcolor="#BBDEFB", color="#1565C0", width=1.6];
+        cic [label="CIC-IDS2017\n(2017)\n78 features", fillcolor="#BBDEFB", color="#1565C0", width=1.6];
+        unsw [label="UNSW-NB15\n(2015)\n76 features", fillcolor="#BBDEFB", color="#1565C0", width=1.6];
+    }
+
+    // Label mapping
+    labels [label="Unified 5-Class Label Mapping\nNormal | DoS | Probe | R2L | U2R",
+            fillcolor="#E8F5E9", color="#2E7D32", width=4.5];
+
+    // Split
+    split [label="Train / Validation / Test Split\n70%          12%          18%",
+           fillcolor="#FFF3E0", color="#E65100", width=4.5];
+
+    // Three split outputs
+    subgraph cluster_splits {
+        label="";
+        style=invis;
+        margin=0;
+
+        train_set [label="Training Set\n(70%)", fillcolor="#FFE0B2", color="#E65100", width=1.8];
+        val_set [label="Validation Set\n(12%)", fillcolor="#FFE0B2", color="#E65100", width=1.8];
+        test_set [label="Test Set\n(18%)", fillcolor="#FFE0B2", color="#E65100", width=1.8];
+    }
+
+    // SMOTE
+    smote [label="SMOTE Oversampling\n(NSL-KDD, UNSW-NB15 only;\ndisabled for CIC-IDS2017, Combined)",
+           fillcolor="#F3E5F5", color="#6A1B9A", width=4.0];
+
+    // Normalisation
+    norm_fit [label="MinMax Scaler\nfit on training data",
+              fillcolor="#E8F5E9", color="#2E7D32", width=3.0];
+    norm_apply [label="Apply scaler to\nvalidation + test sets",
+                fillcolor="#E8F5E9", color="#2E7D32", width=3.0];
+
+    // Training
+    subgraph cluster_training {
+        label="Model Training";
+        labeljust=c;
+        fontsize=9;
+        color="#C62828";
+        style="rounded";
+        margin=12;
+        bgcolor="#FFF5F5";
+
+        train_loop [label="Training Loop\n(Adam optimiser, batch training)",
+                    fillcolor="#FFCDD2", color="#C62828", width=3.2];
+        val_check [label="Validation Loss Check\n(each epoch)",
+                   fillcolor="#FFCDD2", color="#C62828", width=3.0];
+        early_stop [label="Early Stopping\n(patience = 5 epochs)",
+                    fillcolor="#FFCDD2", color="#C62828", width=2.6];
+    }
+
+    // Output
+    model [label="Trained Model\n(.pt / .json)",
+           fillcolor="#C8E6C9", color="#2E7D32", width=2.2];
+    eval [label="Final Evaluation\non held-out test set",
+          fillcolor="#E3F2FD", color="#1565C0", width=2.6];
+
+    // Layout
+    title -> nsl [style=invis];
+
+    nsl -> labels;
+    cic -> labels;
+    unsw -> labels;
+
+    labels -> split;
+
+    split -> train_set;
+    split -> val_set;
+    split -> test_set;
+
+    train_set -> smote;
+    smote -> norm_fit;
+
+    val_set -> norm_apply [style=dashed, color="#2E7D32"];
+    test_set -> norm_apply [style=dashed, color="#2E7D32"];
+    norm_fit -> norm_apply [label="  fitted\n  parameters", fontcolor="#2E7D32", color="#2E7D32"];
+
+    norm_fit -> train_loop [label="  normalised\n  training data", fontcolor="#555555"];
+    norm_apply -> val_check [label="  normalised\n  val data", fontcolor="#555555"];
+
+    train_loop -> val_check;
+    val_check -> early_stop [label="no improvement"];
+    val_check -> train_loop [label="improving", style=dashed, constraint=false];
+    early_stop -> model;
+
+    norm_apply -> eval [label="  normalised\n  test data", fontcolor="#555555"];
+    model -> eval;
+
+    {rank=same; nsl; cic; unsw;}
+    {rank=same; train_set; val_set; test_set;}
+    {rank=same; norm_fit; norm_apply;}
+    {rank=same; model; eval;}
+}

@@ -161,9 +161,13 @@ A multi-model ensemble approach is employed:
 
 **Training Methodology:**
 
+![Training Pipeline](../resources/images/training-pipeline.png)
+
 Each dataset is split 70/12/18 for training, validation, and testing. SMOTE oversampling is applied to imbalanced datasets (NSL-KDD and UNSW-NB15) to synthesise minority-class samples, but is disabled for the larger CIC-IDS2017 and Combined datasets where class distributions are sufficient. The CNN+LSTM models use early stopping with a patience of 5 epochs to prevent overfitting, halting training when validation loss ceases to improve. All features are normalised using MinMax scaling fitted exclusively on the training split and then applied consistently to the validation and test sets to prevent data leakage.
 
 **Implementation Framework:**
+
+![Implementation Framework](../resources/images/tech-stack.png)
 
 The system is implemented primarily in Rust, using the smartcore 0.3 library for Random Forest and Isolation Forest classifiers. CNN+LSTM deep learning is supported through two backends: tch-rs 0.17 (libtorch C++ bindings) for NVIDIA GPUs, and Python PyTorch for AMD GPUs via ROCm. Live network packet capture and flow reconstruction use libpcap, while rayon enables parallelised training across 16+ CPU cores. A custom rule-based detection engine handles known CPS-specific attack signatures.
 
@@ -196,12 +200,7 @@ The ML-based IDS is evaluated using standard classification metrics:
 
 *Model A metrics are artificially limited by binary-only test labels in the NSL-KDD test set (Probe/R2L/U2R collapsed to a single attack class).
 
-Key findings:
-- **CNN+LSTM achieves 99.83% on Model B** — the highest accuracy across all methods
-- **Model D** demonstrates cross-era generalisation at 97.8% across 276 zero-padded features spanning datasets from 1999 to 2017
-- **RF + IForest ensemble improves minority class detection** (Model D R2L recall: 0.75 → 0.82)
-- **Isolation Forest provides unsupervised baseline** at ~80% across all datasets, detecting anomalies without labelled training data
-- **U2R remains the hardest class** — extremely rare across all datasets
+The CNN+LSTM network achieves the highest accuracy across all methods at 99.83% on Model B, while Model D demonstrates cross-era generalisation at 97.8% across 276 zero-padded features spanning datasets from 1999 to 2017. The RF + IForest ensemble improves minority class detection, raising Model D's R2L recall from 0.75 to 0.82. The Isolation Forest provides an unsupervised baseline at approximately 80% across all datasets, detecting anomalies without requiring labelled training data. U2R remains the hardest class to detect due to its extreme rarity across all datasets.
 
 **Comparison with Rule-Based Approaches:**
 
