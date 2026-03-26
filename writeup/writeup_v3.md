@@ -103,40 +103,11 @@ The choice of implementation language is driven by the technical demands of intr
 
 **System Architecture Components:**
 
-1. **Data Collection Module:**
-   - Network traffic capture using packet sniffing techniques (libpcap)
-   - Protocol-specific parsers for Modbus, DNP3, and OPC UA
-   - System log aggregation from PLCs, RTUs, and HMIs
-   - Host-based monitoring: file integrity (inotify), process monitoring, syscall tracing
-
-2. **Preprocessing Pipeline:**
-   - Packet reassembly and flow reconstruction
-   - Feature extraction (packet size, inter-arrival times, protocol fields)
-   - Data normalisation (MinMax scaling) and one-hot encoding
-   - Handling of imbalanced datasets through SMOTE (Synthetic Minority Over-sampling Technique)
-
-3. **Detection Engine:**
-   - Rule-based detection for known CPS-specific attacks (Modbus function code validation, register range whitelisting)
-   - CPS physics-aware detection: process state tracking from observed Modbus traffic, register bounds checking (valve 0–180°, tank 0–1023 ADC), pump oscillation detection (Stuxnet-style rapid toggling < 5s), valve/pump state consistency validation, sensor spoofing detection (writes to read-only registers), and rate-of-change limits based on physical process dynamics
-   - ML-based anomaly detection for unknown threats
-   - Ensemble approach combining multiple classifiers with weighted fusion
-
-4. **Response Module:**
-   - Alert generation and prioritisation
-   - Configurable IDS/IPS mode with automated network blocking and host response capabilities
-   - Integration with SIEM (Security Information and Event Management) systems via CEF/syslog export
-
-5. **Management Interface:**
-   - Dashboard for real-time monitoring
-   - Rule configuration and model retraining capabilities
+![IDS System Architecture](../resources/images/ids-architecture.png)
 
 **CPS-Specific Design Considerations:**
-- Protocol awareness for industrial protocols (Modbus function code validation, register address/value extraction)
-- Physical process modelling: the IDS encodes plant-specific constraints (tank capacity, valve servo range, pump control thresholds, fill/drain rates) and validates every Modbus write against these constraints
-- Process state tracking: passive observation of Modbus read responses maintains a live model of plant state, enabling detection of state-inconsistent commands even when individual writes appear valid
-- Whitelisting of expected communication patterns between devices
-- Time-series analysis for detecting gradual process manipulation (rate-of-change monitoring, pump toggle frequency tracking)
-- Minimal latency impact on control loops
+
+The IDS is designed with protocol awareness for industrial protocols, performing Modbus function code validation and register address/value extraction on every packet. Physical process modelling is central to the detection strategy: the IDS encodes plant-specific constraints (tank capacity, valve servo range, pump control thresholds, fill/drain rates) and validates every Modbus write against these constraints. Complementing this, passive observation of Modbus read responses maintains a live model of plant state, enabling detection of state-inconsistent commands even when individual writes appear valid. The system also whitelists expected communication patterns between devices and performs time-series analysis for detecting gradual process manipulation through rate-of-change monitoring and pump toggle frequency tracking. Throughout, the design prioritises minimal latency impact on control loops.
 
 ### 2.3 AI/ML Implementation
 
@@ -178,32 +149,27 @@ A multi-model ensemble approach is employed:
 
 1. **Random Forest Classifier:** Robust against overfitting, handles high-dimensional data effectively, provides feature importance rankings. Configuration: 100 estimators, max depth of 20, minimum samples split of 5.
 
-2. **CNN+LSTM Network:** Combines convolutional feature extraction with sequential modelling. Architecture: Conv1d(1→64, k=3)→BatchNorm→ReLU→Conv1d(64→128, k=3)→BatchNorm→ReLU→LSTM(128 hidden, 2 layers, dropout=0.3)→Linear(128→64)→ReLU→Dropout→Linear(64→5). ~297K trainable parameters, trained with Adam optimiser and early stopping (patience=5).
+![Random Forest Architecture](../resources/images/model-random-forest.png)
+
+2. **CNN+LSTM Network:** Combines convolutional feature extraction with sequential modelling to capture both local patterns and temporal dependencies in network flows. The architecture passes input through two convolutional blocks (Conv1d with 64 and 128 filters respectively, kernel size 3, each followed by batch normalisation and ReLU activation), then into a 2-layer LSTM with 128 hidden units and 0.3 dropout for sequence modelling. The LSTM output feeds through two fully connected layers (128→64→5) with ReLU and dropout, producing a 5-class prediction. The model contains approximately 297K trainable parameters and is trained with the Adam optimiser using early stopping (patience of 5 epochs) to prevent overfitting.
+
+![CNN+LSTM Architecture](../resources/images/model-cnn-lstm.png)
 
 3. **Isolation Forest:** Unsupervised anomaly detection for identifying novel attack patterns not present in training data. Contamination parameter set based on expected anomaly rate.
 
+![Isolation Forest Architecture](../resources/images/model-isolation-forest.png)
+
 **Training Methodology:**
-- 70/12/18 split for training, validation, and testing
-- SMOTE oversampling for imbalanced datasets (NSL-KDD, UNSW-NB15); disabled for large datasets (CIC-IDS2017, Combined)
-- Early stopping (patience=5 epochs) to prevent overfitting in CNN+LSTM training
-- MinMax normalisation fitted on training data, applied to validation and test sets
+
+Each dataset is split 70/12/18 for training, validation, and testing. SMOTE oversampling is applied to imbalanced datasets (NSL-KDD and UNSW-NB15) to synthesise minority-class samples, but is disabled for the larger CIC-IDS2017 and Combined datasets where class distributions are sufficient. The CNN+LSTM models use early stopping with a patience of 5 epochs to prevent overfitting, halting training when validation loss ceases to improve. All features are normalised using MinMax scaling fitted exclusively on the training split and then applied consistently to the validation and test sets to prevent data leakage.
 
 **Implementation Framework:**
-- Rust with smartcore 0.3 for Random Forest and Isolation Forest
-- tch-rs 0.17 (libtorch C++ bindings) for CNN+LSTM deep learning on NVIDIA GPUs
-- Python PyTorch for CNN+LSTM training on AMD GPUs via ROCm
-- libpcap for live network packet capture and flow reconstruction
-- rayon for parallelised training across 16+ CPU cores
-- Custom rule-based detection engine for known CPS-specific attack signatures
+
+The system is implemented primarily in Rust, using the smartcore 0.3 library for Random Forest and Isolation Forest classifiers. CNN+LSTM deep learning is supported through two backends: tch-rs 0.17 (libtorch C++ bindings) for NVIDIA GPUs, and Python PyTorch for AMD GPUs via ROCm. Live network packet capture and flow reconstruction use libpcap, while rayon enables parallelised training across 16+ CPU cores. A custom rule-based detection engine handles known CPS-specific attack signatures.
 
 **Implementation Scope:**
 
-The final system significantly exceeds the initially proposed minimal pipeline (passive CSV ingestion → single Random Forest → binary detection). It is a hybrid NIDS+HIDS with:
-- Live packet capture with ICS/SCADA protocol parsing (Modbus, DNP3, OPC-UA)
-- Host-based monitoring: file integrity (inotify), process monitoring, syscall tracing, log watching
-- Multi-model ensemble (RF + CNN+LSTM + Isolation Forest) with weighted fusion
-- Multi-dataset cross-era training across three datasets (1999–2017) with a unified 5-class label scheme and a combined generalisation model (Model D, 276 zero-padded features)
-- Four independent training backends (single-threaded Rust, parallel Rust, GPU Rust/libtorch, GPU Python/PyTorch)
+The final system significantly exceeds the initially proposed minimal pipeline (passive CSV ingestion, single Random Forest, binary detection). It is a hybrid NIDS+HIDS incorporating live packet capture with ICS/SCADA protocol parsing (Modbus, DNP3, OPC-UA), host-based monitoring (file integrity via inotify, process monitoring, syscall tracing, and log watching), and a multi-model ensemble (Random Forest, CNN+LSTM, and Isolation Forest) with weighted fusion. The training pipeline supports multi-dataset cross-era training across three datasets spanning 1999–2017 with a unified 5-class label scheme, including a combined generalisation model (Model D) using 276 zero-padded features. Four independent training backends are provided: single-threaded Rust, parallel Rust, GPU Rust/libtorch, and GPU Python/PyTorch.
 
 ### 2.4 Evaluation and Comparison
 

@@ -1,0 +1,143 @@
+digraph ids_architecture {
+    rankdir=TB;
+    bgcolor="white";
+    fontname="Helvetica";
+    node [fontname="Helvetica", fontsize=10, style="filled,rounded", shape=box, penwidth=1.5];
+    edge [fontname="Helvetica", fontsize=9, penwidth=1.2, color="#555555"];
+    nodesep=0.5;
+    ranksep=0.8;
+    pad=0.5;
+    compound=true;
+
+    // ── External Sources ──
+    subgraph cluster_sources {
+        label="CPS Environment";
+        labeljust=l;
+        fontsize=10;
+        color="#999999";
+        style="dashed,rounded";
+        margin=16;
+
+        net_traffic [label="Network Traffic\n(Modbus TCP/RTU,\nDNP3, OPC UA)", fillcolor="#E3F2FD", color="#1565C0", width=2.0];
+        sys_logs [label="System Logs\n(PLCs, RTUs, HMIs)", fillcolor="#E3F2FD", color="#1565C0", width=2.0];
+        host_events [label="Host Events\n(files, processes,\nsyscalls)", fillcolor="#E3F2FD", color="#1565C0", width=2.0];
+    }
+
+    // ── Module 1: Data Collection ──
+    subgraph cluster_collection {
+        label="1  Data Collection Module";
+        labeljust=l;
+        fontsize=10;
+        fontcolor="#1565C0";
+        color="#1565C0";
+        style="rounded";
+        margin=16;
+        bgcolor="#F5F9FF";
+
+        pkt_capture [label="Packet Capture\n(libpcap)", fillcolor="#BBDEFB", color="#1565C0", width=2.0];
+        proto_parse [label="Protocol Parsers\nModbus · DNP3 · OPC UA", fillcolor="#BBDEFB", color="#1565C0", width=2.4];
+        log_agg [label="Log Aggregation", fillcolor="#BBDEFB", color="#1565C0", width=1.8];
+        host_mon [label="Host Monitoring\ninotify · procfs · syscalls", fillcolor="#BBDEFB", color="#1565C0", width=2.4];
+    }
+
+    // ── Module 2: Preprocessing Pipeline ──
+    subgraph cluster_preprocess {
+        label="2  Preprocessing Pipeline";
+        labeljust=l;
+        fontsize=10;
+        fontcolor="#E65100";
+        color="#E65100";
+        style="rounded";
+        margin=16;
+        bgcolor="#FFF8F0";
+
+        reassembly [label="Packet Reassembly\n& Flow Reconstruction", fillcolor="#FFE0B2", color="#E65100", width=2.6];
+        feat_ext [label="Feature Extraction\npacket size · IAT ·\nprotocol fields", fillcolor="#FFE0B2", color="#E65100", width=2.2];
+        normalise [label="Normalisation\nMinMax Scaling ·\nOne-Hot Encoding", fillcolor="#FFE0B2", color="#E65100", width=2.2];
+        smote [label="SMOTE\nOversampling", fillcolor="#FFE0B2", color="#E65100", width=1.8];
+    }
+
+    // ── Module 3: Detection Engine ──
+    subgraph cluster_detection {
+        label="3  Detection Engine";
+        labeljust=l;
+        fontsize=10;
+        fontcolor="#2E7D32";
+        color="#2E7D32";
+        style="rounded";
+        margin=16;
+        bgcolor="#F1F8F1";
+
+        rule_engine [label="Rule-Based Detection\nModbus FC validation ·\nregister whitelisting", fillcolor="#C8E6C9", color="#2E7D32", width=2.6];
+        physics [label="CPS Physics Engine\nstate tracking · bounds checking\npump oscillation · valve consistency\nsensor spoofing · rate-of-change", fillcolor="#C8E6C9", color="#2E7D32", width=3.2];
+        ml_engine [label="ML Anomaly Detection\nRandom Forest · CNN+LSTM ·\nIsolation Forest", fillcolor="#C8E6C9", color="#2E7D32", width=2.6];
+        ensemble [label="Ensemble Fusion\nweighted voting", fillcolor="#A5D6A7", color="#1B5E20", width=2.0];
+    }
+
+    // ── Module 4: Response Module ──
+    subgraph cluster_response {
+        label="4  Response Module";
+        labeljust=l;
+        fontsize=10;
+        fontcolor="#C62828";
+        color="#C62828";
+        style="rounded";
+        margin=16;
+        bgcolor="#FFF5F5";
+
+        alert_gen [label="Alert Generation\n& Prioritisation", fillcolor="#FFCDD2", color="#C62828", width=2.2];
+        ids_ips [label="IDS/IPS Mode\nnetwork blocking ·\nhost response", fillcolor="#FFCDD2", color="#C62828", width=2.2];
+        siem [label="SIEM Integration\nCEF · syslog export", fillcolor="#FFCDD2", color="#C62828", width=2.0];
+    }
+
+    // ── Module 5: Management Interface ──
+    subgraph cluster_mgmt {
+        label="5  Management Interface";
+        labeljust=l;
+        fontsize=10;
+        fontcolor="#6A1B9A";
+        color="#6A1B9A";
+        style="rounded";
+        margin=16;
+        bgcolor="#F9F3FC";
+
+        dashboard [label="Real-Time\nDashboard", fillcolor="#E1BEE7", color="#6A1B9A", width=1.8];
+        config [label="Rule Configuration\n& Model Retraining", fillcolor="#E1BEE7", color="#6A1B9A", width=2.2];
+    }
+
+    // ── Data Flow: Sources → Collection ──
+    net_traffic -> pkt_capture [lhead=cluster_collection];
+    sys_logs -> log_agg;
+    host_events -> host_mon;
+
+    // ── Internal Collection flows ──
+    pkt_capture -> proto_parse;
+
+    // ── Collection → Preprocessing ──
+    proto_parse -> reassembly [ltail=cluster_collection, lhead=cluster_preprocess, label="  raw packets\n  & events", fontcolor="#555555"];
+
+    // ── Preprocessing chain ──
+    reassembly -> feat_ext;
+    feat_ext -> normalise;
+    normalise -> smote [style=dashed, label="training\nonly", fontcolor="#888888"];
+
+    // ── Preprocessing → Detection ──
+    normalise -> rule_engine [ltail=cluster_preprocess, lhead=cluster_detection, label="  feature\n  vectors", fontcolor="#555555"];
+
+    // ── Detection internal ──
+    rule_engine -> ensemble;
+    physics -> ensemble;
+    ml_engine -> ensemble;
+
+    // ── Detection → Response ──
+    ensemble -> alert_gen [ltail=cluster_detection, lhead=cluster_response, label="  alerts", fontcolor="#555555"];
+
+    // ── Response internal ──
+    alert_gen -> ids_ips;
+    alert_gen -> siem;
+
+    // ── Management Interface connections ──
+    dashboard -> alert_gen [dir=back, style=dashed, color="#6A1B9A", label="alerts", fontcolor="#6A1B9A"];
+    config -> rule_engine [style=dashed, color="#6A1B9A", label="rules", fontcolor="#6A1B9A"];
+    config -> ml_engine [style=dashed, color="#6A1B9A", label="models", fontcolor="#6A1B9A"];
+}
