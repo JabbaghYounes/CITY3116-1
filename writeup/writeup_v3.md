@@ -204,17 +204,7 @@ The CNN+LSTM network achieves the highest accuracy across all methods at 99.83% 
 
 **Comparison with Rule-Based Approaches:**
 
-Traditional rule-based systems like Snort demonstrate high precision for known attack signatures but suffer from:
-- Lower recall due to inability to detect novel attacks
-- Maintenance burden of constant rule updates
-- Limited effectiveness against polymorphic or obfuscated attacks
-
-The implemented ML-based ensemble demonstrates:
-- 99.73% accuracy on CIC-IDS2017 (Model B) and 97.8% on the combined cross-dataset model (Model D)
-- False positive rates as low as 0.06% (Model B), significantly outperforming typical rule-based systems
-- The Isolation Forest component provides unsupervised anomaly detection for zero-day threats not present in training data
-- The combined Model D demonstrates cross-era generalisation across datasets spanning 1999–2017
-- Adaptive capability through periodic retraining with new labelled data
+Traditional rule-based systems like Snort demonstrate high precision for known attack signatures but suffer from lower recall due to their inability to detect novel attacks, the maintenance burden of constant rule updates, and limited effectiveness against polymorphic or obfuscated attacks. By contrast, the implemented ML-based ensemble achieves 99.73% accuracy on CIC-IDS2017 (Model B) and 97.8% on the combined cross-dataset model (Model D), with false positive rates as low as 0.06% (Model B) — significantly outperforming typical rule-based systems. The Isolation Forest component provides unsupervised anomaly detection for zero-day threats not present in training data, while the combined Model D demonstrates cross-era generalisation across datasets spanning 1999–2017. The system also offers adaptive capability through periodic retraining with new labelled data.
 
 ### 2.5 Advantages, Limitations, and Challenges
 
