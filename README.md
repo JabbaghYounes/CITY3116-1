@@ -1,6 +1,4 @@
-# CPS-IDS
-
-AI/ML-driven Intrusion Detection System for Cyber-Physical Systems.
+# AI/ML-driven Intrusion Detection System for Cyber-Physical Systems
 
 ## What This Is
 
