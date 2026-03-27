@@ -52,4 +52,4 @@ Download and place at repo root (gitignored):
 - DHT11 temperature/humidity sensor (digital, D4)
 - ELEGOO kit sensors/actuators (ultrasonic, motion, sound, water level, relay, servo, buzzer, LCD, RFID)
 
-Wiring diagrams available in `plant/diagrams/` (SVG, printable).
+Wiring diagrams available in `plant/diagrams/`
