@@ -43,5 +43,10 @@ evidence/logs/alerts.jsonl
 evidence/run-*/pcaps/
 evidence/run-*/logs/alerts.jsonl
 
+# Non-code folders
+resources/
+writeup/
+presentation/
+
 # OS files
 .DS_Store
