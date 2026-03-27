@@ -7,10 +7,6 @@ A complete IDS/IPS prototype targeting industrial control systems, consisting of
 1. **`ids/`** — ML detection engine trained on three public intrusion datasets (NSL-KDD, CIC-IDS2017, UNSW-NB15) with a unified 5-class label scheme (Normal, DoS, Probe, R2L, U2R)
 2. **`plant/`** — Physical CPS testbed: Arduino-based water treatment plant with Modbus RTU/TCP, attack tools, and a software simulation
 
-## Architecture
-
-![CPS-IDS Architecture](resources/images/architecture.png)
-
 ## Detection Models
 
 Detection uses three complementary models:
